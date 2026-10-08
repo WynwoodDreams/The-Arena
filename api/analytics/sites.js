@@ -1,16 +1,9 @@
 // Private, read-only Vercel Web Analytics endpoint.
-// Set VERCEL_ANALYTICS_TOKEN and ARENA_ANALYTICS_ACCESS_KEY in Vercel.
+// Set VERCEL_ANALYTICS_TOKEN and ARENA_ACCESS_KEY in Vercel.
 // Never expose visitor numbers on a public route without access-key validation.
-const crypto = require("crypto");
+const guard = require("../../lib/guard.js");
 const sites = require("../../lib/analytics-sites.js");
 const TEAM_ID = "team_g6NkapUNAEH5U9sagjaSsRfz";
-
-function equalSecret(a, b) {
-  if (!a || !b) return false;
-  const left = Buffer.from(String(a));
-  const right = Buffer.from(String(b));
-  return left.length === right.length && crypto.timingSafeEqual(left, right);
-}
 
 async function querySite(site, since, until, token, teamId) {
   const params = new URLSearchParams({
@@ -48,21 +41,19 @@ async function querySite(site, since, until, token, teamId) {
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).json({success:false,message:"GET only"});
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({success:false,message:"POST only"});
   }
   const token = process.env.VERCEL_ANALYTICS_TOKEN;
-  const accessKey = process.env.ARENA_ANALYTICS_ACCESS_KEY;
-  if (!token || !accessKey) {
+  if (!token || !process.env.ARENA_ACCESS_KEY) {
     return res.status(503).json({
       success:false, needsSetup:true,
-      message:"Analytics are not configured yet. Add VERCEL_ANALYTICS_TOKEN and ARENA_ANALYTICS_ACCESS_KEY in the Arena Vercel environment settings."
+      message:"Set VERCEL_ANALYTICS_TOKEN and ARENA_ACCESS_KEY in your Arena Vercel environment settings."
     });
   }
-  if (!equalSecret(req.headers["x-arena-analytics-key"], accessKey)) {
-    return res.status(401).json({success:false,needsKey:true,message:"Enter your private Arena Analytics access key."});
-  }
+  const denied=guard.check(req,{requireKey:true});
+  if(denied)return guard.reject(res,denied);
   const until = Date.now();
   const since = until - 30*24*60*60*1000;
   const teamId = process.env.VERCEL_ANALYTICS_TEAM_ID || TEAM_ID;
