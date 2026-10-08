@@ -1,7 +1,7 @@
 (function(){
 'use strict';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-scoutRun.lastNode=state.scout?.lastNode;scoutRun.outputs=state.scout?.outputs;Object.keys(flowRuns).forEach(id=>{flowRuns[id].lastNode=state.flows[id]?.lastNode;flowRuns[id].outputs=state.flows[id]?.outputs});
+scoutRun.finishedAt=state.scout?.finishedAt;Object.keys(flowRuns).forEach(id=>{flowRuns[id].finishedAt=state.flows[id]?.finishedAt});
 const key='arena-scout-saves-v1';let saves=[];try{saves=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(saves))saves=[]}catch{}
 function safeLink(raw){try{const u=new URL(raw);return ['https:','http:'].includes(u.protocol)?u.href:null}catch{return null}}
 function mount(host){if(!host||host.querySelector('.scout-saves'))return;
@@ -14,16 +14,14 @@ function mount(host){if(!host||host.querySelector('.scout-saves'))return;
  search.oninput=draw;list.onclick=e=>{const b=e.target.closest('[data-remove]');if(!b)return;const next=saves.filter(s=>s.id!==b.dataset.remove);try{localStorage.setItem(key,JSON.stringify(next));saves=next;draw()}catch{toast('Unable to save removal.')}};
  section.querySelector('[data-export]').onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify(saves,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='scout-saved-items.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};draw();
 }
-function readable(raw){try{const items=JSON.parse(raw);return items.map(item=>{if(typeof item==='string')return item;const text=item.output||item.text||item.summary||item.content||item.message?.content||item.message;if(typeof text==='string')return text;return JSON.stringify(item,null,2)}).join('\n\n')}catch{return raw}}
 function outputMount(host,run,label){
  if(!host||!run)return;
  const id=label||'Scout';let box=Array.from(host.querySelectorAll('.mission-result')).find(b=>b.dataset.resultId===id);
  if(!box){box=document.createElement('section');box.className='mission-result scout-library';box.dataset.resultId=id;host.prepend(box)}
  const message=run.trackingMessage||(!run.requestId&&run.status==='Started'?'This older run has no tracking ID. Start a new run to track its result.':run.message||'No run recorded yet.');
- const choices=Array.isArray(run.outputs)?run.outputs:[];
- const choose=choices.length?'<label>Workflow output<select data-output-node>'+choices.map(o=>'<option'+(o.node===run.lastNode?' selected':'')+'>'+esc(o.node)+'</option>').join('')+'</select></label>':'';
- const markup='<div class="detail-label">'+esc(id)+' RESULTS · '+esc(run.status)+'</div><p class="inspect-note" role="status">'+esc(message)+'</p><button type="button" class="inspect-button" data-check-results>Check results</button>'+choose+(run.output?'<details open><summary>Execution output'+(run.lastNode?' · '+esc(run.lastNode):'')+'</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:300px;overflow:auto">'+esc(readable(run.output))+'</pre></details>':'');
- if(box.dataset.markup!==markup){box.innerHTML=markup;box.dataset.markup=markup;box.querySelector('[data-check-results]').onclick=()=>check(true,run);const picker=box.querySelector('[data-output-node]');if(picker)picker.onchange=()=>{const item=choices.find(o=>o.node===picker.value);if(item){run.output=item.output;run.lastNode=item.node;saveState();enhance()}}}
+ const finished=['Completed','Failed'].includes(run.status)&&run.finishedAt?'<div class="detail-row"><span>Finished</span><strong>'+esc(new Date(run.finishedAt).toLocaleString())+'</strong></div>':'';
+ const markup='<div class="detail-label">'+esc(id)+' RESULTS · '+esc(run.status)+'</div><p class="inspect-note" role="status">'+esc(message)+'</p><button type="button" class="inspect-button" data-check-results>Check results</button>'+finished;
+ if(box.dataset.markup!==markup){box.innerHTML=markup;box.dataset.markup=markup;box.querySelector('[data-check-results]').onclick=()=>check(true,run)}
 }
 function enhance(){const details=document.getElementById('details');if(selected==='scout'){mount(details);outputMount(details,scoutRun,'Scout')}const focus=document.getElementById('agent-focus-scroll');if(focus?.querySelector('#agent-focus-reports')){mount(focus);outputMount(focus,scoutRun,'Scout')}if(selected==='flow')flowWorkflows.forEach(w=>outputMount(details,flowRuns[w.id],w.name));if(focus?.querySelector('[data-focus-action^="flow:"]'))flowWorkflows.forEach(w=>outputMount(focus,flowRuns[w.id],w.name))}
 // Explicit inbox navigation closes the modal before opening the requested agent.
@@ -44,7 +42,7 @@ async function check(force=false,target=null){
    if(!response.ok||!data.configured){run.trackingMessage=data.message||'Execution tracking unavailable.';continue}
    run.trackingMessage='Execution '+(data.executionId||'pending');
    if(['Completed','Failed'].includes(data.status)){
-    const changed=run.status!==data.status;run.status=data.status;run.message=data.message;run.output=data.output;run.outputs=data.outputs;run.lastNode=data.lastNode;
+    const changed=run.status!==data.status;run.status=data.status;run.message=data.message;run.finishedAt=data.finishedAt||null;
     if(changed)recordRun(agent==='scout'?'scout':'flow',run.status,run.message);
     if(agent==='scout')agents.find(a=>a.id==='scout').progress=run.status==='Completed'?100:0;
     saveState();renderAll();window.ArenaCommand?.refreshViews();window.AgentFocus?.refresh();

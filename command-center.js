@@ -16,7 +16,7 @@
     '<div class="cmd-meta">Run a connected workflow or inspect its last acknowledged request.</div>',
     '<div class="cmd-list" id="cmd-mission-list" aria-live="polite"></div>',
     '<div class="cmd-history"><div class="cmd-history-heading">REQUEST HISTORY <span>THIS BROWSER</span></div><div id="cmd-run-list"></div></div>',
-    '<p class="cmd-note">Started = accepted by n8n, not finished. No completion or progress is invented. Completion and final-node output are retrieved when private n8n API access is configured.</p></section></section>'
+    '<p class="cmd-note">Started = accepted by n8n, not finished. No completion or progress is invented. Completion is retrieved when private n8n API access is configured; the data itself stays in n8n Executions.</p></section></section>'
   ].join("");
   after.insertAdjacentHTML("afterend",html);
 

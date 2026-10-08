@@ -78,4 +78,4 @@ Completion tracking uses the existing n8n instance's public API. Set `N8N_API_KE
 
 Enable saving successful and failed production execution data in n8n workflow settings. Arena sends a unique `arenaRequestId` in the webhook body and matches that ID in saved execution data; workflows need no new response nodes. Runs submitted before this update cannot be matched. Polling examines the newest 100 saved executions, every 10 seconds while the page is visible. A missing/pruned execution remains Started; API errors do not imply a failed workflow.
 
-The result is the last executed node's actual JSON, limited to 20 items and 30,000 characters. If the last node is Slack, this is Slack output, not a full job dataset. A custom results node can be added later if desired.
+The Arena shows only whether the run Completed or Failed and when it finished. Workflow output is not displayed; open n8n Executions to see the data a run produced.
