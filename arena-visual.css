@@ -67,7 +67,7 @@ header{height:0;border:none;overflow:hidden;padding:0}
 .hotspot{padding:5px 7px;font-size:10px;line-height:1.1;letter-spacing:.5px;border-color:color-mix(in srgb,var(--agent) 68%,#2d3f40);background:#081819e0;color:#e4fbe9;z-index:4;border-radius:2px;text-shadow:0 1px 5px #000;box-shadow:0 0 9px #02161b91}
 .hotspot:before{background:var(--agent);box-shadow:0 0 8px var(--agent)}
 .scene-bottom{padding:10px 13px;font-size:10px;letter-spacing:.2px;color:#a1f8e3;background:linear-gradient(transparent,#091f20a1)}
-.inspector{max-height:none;display:flex;flex-direction:column;overflow:hidden;border-color:#c28d6e;box-shadow:inset 0 0 0 1px #82553824}
+.inspector{max-height:none;min-height:0;height:100%;display:flex;flex-direction:column;overflow:hidden;border-color:#c28d6e;box-shadow:inset 0 0 0 1px #82553824}
 .inspector .panel-top{background:linear-gradient(120deg,#402c2b,#2a2529);border-color:#9b6e58;color:#ffbb8c}
 .inspector .panel-top span:first-child{color:#ffbc92}
 .inspector #details{overflow-y:auto;overflow-x:hidden;min-height:0;max-height:calc(100% - 38px);padding:15px 13px;scrollbar-color:#5c7f7b transparent}
