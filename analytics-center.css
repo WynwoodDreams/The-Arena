@@ -1,33 +1,9 @@
-/* Private Website Analytics panel: matches Agent Arena's operations aesthetic */
-.ana-wrap{margin:18px 0}
-.ana-head{min-height:55px}
-.ana-head .ana-actions{display:flex;gap:8px;align-items:center}
-.ana-refresh,.ana-unlock{border:1px solid #4af3d157;background:#4af3d10d;color:var(--cyan);padding:8px 10px;font:11px var(--mono)}
-.ana-refresh:disabled{opacity:.5;cursor:wait}
-.ana-intro{padding:12px 18px;border-bottom:1px solid #ffffff12;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;color:#8b9db0;font:11px/1.7 var(--mono)}
-.ana-status{font-size:10px;color:#90a4b8}
-.ana-stats{padding:15px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.ana-stat{padding:14px;border:1px solid #303b4b;background:#121b27;border-radius:7px}
-.ana-stat span{font:10px var(--mono);color:#92a7bd}
-.ana-stat strong{display:block;margin:6px 0 2px;color:#e9faff;font:600 26px var(--sans);letter-spacing:-.8px}
-.ana-stat small{color:#8091a4;font-size:11px}
-.ana-grid{padding:0 15px 15px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.ana-card{padding:13px 14px;border:1px solid #303b4b;border-radius:7px;background:linear-gradient(120deg,#17202e,#111822);min-width:0}
-.ana-card-head{display:flex;justify-content:space-between;gap:10px;align-items:start}
-.ana-card h3{font:600 15px var(--sans);margin:0;color:#e9edf6}
-.ana-card h3 a{text-decoration:none;color:inherit}
-.ana-card h3 a:hover{color:var(--cyan)}
-.ana-card .ana-badge{border:1px solid #4af3d140;border-radius:4px;padding:4px 6px;color:#9ff2e3;white-space:nowrap;font:10px var(--mono)}
-.ana-card .ana-badge[data-state=not_enabled],.ana-card .ana-badge[data-state=unavailable],.ana-card .ana-badge[data-state=restricted]{color:#adbbce;border-color:#7b8b9e57}
-.ana-numbers{margin-top:10px;display:flex;justify-content:space-between;gap:10px;align-items:baseline}
-.ana-numbers strong{font:600 26px var(--sans);color:#f3faff}
-.ana-numbers span{font:11px var(--mono);color:#8ca3b5}
-.ana-track{margin-top:11px;height:4px;border-radius:3px;background:#202d3c;overflow:hidden}
-.ana-track i{display:block;background:linear-gradient(90deg,#4af3d1,#4bd6ff);height:100%;transition:width .35s}
-.ana-explain{margin-top:10px;color:#97a9b8;font:11px/1.5 var(--sans)}
-.ana-message{padding:20px 18px;color:#adbdd0;font:13px/1.7 var(--sans)}
-.ana-message b{color:#e3edf9}
-.ana-message code{font-size:12px;color:#8df4d9}
-.ana-bottom{padding:0 16px 16px;margin:0;color:#8192a6;font:11px/1.7 var(--sans)}
-@media(max-width:950px){.ana-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:700px){.ana-grid{grid-template-columns:1fr}.ana-stat strong{font-size:23px}}
+/* Vercel Web Analytics integrated into existing Website Monitor cards. */
+.site-traffic{margin:0 0 13px;padding:12px 0 10px;border-top:1px solid #ffffff13;border-bottom:1px solid #ffffff0e}
+.site-traffic-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.site-traffic-values>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.site-traffic-values span{font:10px var(--mono);letter-spacing:.8px;color:var(--muted)}
+.site-traffic-values strong{font:500 21px var(--mono);color:var(--text)}
+.site-traffic-note{font:10px/1.5 var(--mono);color:#879bab;margin-top:10px}
+.site-traffic-muted{font:11px/1.5 var(--mono);color:#8093a9}
+@media(max-width:540px){.site-traffic-values strong{font-size:20px}}
