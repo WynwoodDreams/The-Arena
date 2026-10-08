@@ -5,7 +5,9 @@ const guard = require("../../lib/guard.js");
 const sites = require("../../lib/analytics-sites.js");
 const TEAM_ID = "team_g6NkapUNAEH5U9sagjaSsRfz";
 
-async function querySite(site, since, until, token, teamId) {
+const ONLINE_WINDOW_MINUTES = 5;
+
+async function queryCount(site, since, until, token, teamId) {
   const params = new URLSearchParams({
     projectId: site.project,
     since: new Date(since).toISOString(),
@@ -21,7 +23,7 @@ async function querySite(site, since, until, token, teamId) {
     if (!response.ok) {
       let code = "";
       try {const body = await response.json();code = String(body.error?.code || "");} catch {}
-      return {...site, status: code === "web_analytics_not_enabled" ? "not_enabled" :
+      return {status: code === "web_analytics_not_enabled" ? "not_enabled" :
         response.status === 401 || response.status === 403 ? "restricted" : "unavailable",
         visitors: null, pageviews: null};
     }
@@ -30,12 +32,22 @@ async function querySite(site, since, until, token, teamId) {
     const visitors = metrics.visitors;
     const pageviews = metrics.pageviews;
     if (!Number.isFinite(visitors) || !Number.isFinite(pageviews)) {
-      return {...site, status: "unavailable", visitors: null, pageviews: null};
+      return {status: "unavailable", visitors: null, pageviews: null};
     }
-    return {...site, status: "verified", visitors, pageviews};
+    return {status: "verified", visitors, pageviews};
   } catch {
-    return {...site, status: "unavailable", visitors: null, pageviews: null};
+    return {status: "unavailable", visitors: null, pageviews: null};
   }
+}
+
+// 30-day totals plus "online now": unique visitors seen in the last few minutes.
+// Vercel has no true presence API, so this is the closest honest figure.
+async function querySite(site, since, until, token, teamId) {
+  const [period, recent] = await Promise.all([
+    queryCount(site, since, until, token, teamId),
+    queryCount(site, until - ONLINE_WINDOW_MINUTES*60*1000, until, token, teamId)
+  ]);
+  return {...site, ...period, online: recent.status === "verified" ? recent.visitors : null};
 }
 
 module.exports = async function handler(req, res) {
@@ -58,8 +70,12 @@ module.exports = async function handler(req, res) {
   const since = until - 30*24*60*60*1000;
   const teamId = process.env.VERCEL_ANALYTICS_TEAM_ID || TEAM_ID;
   const rows = await Promise.all(sites.map(site=>querySite(site, since, until, token, teamId)));
+  const known = rows.filter(row=>Number.isFinite(row.online));
   return res.status(200).json({
     success:true,source:"Vercel Web Analytics",periodDays:30,
+    onlineWindowMinutes:ONLINE_WINDOW_MINUTES,
+    totalOnline:known.length?known.reduce((sum,row)=>sum+row.online,0):null,
+    onlineSites:known.length,
     since:new Date(since).toISOString(),until:new Date(until).toISOString(),
     checkedAt:new Date().toISOString(),
     sites:rows
