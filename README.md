@@ -72,6 +72,8 @@ Flow stores requests and Chief review items locally. HTTP acceptance does not pr
 
 ## Scout saves and real mission results
 
+Each website card also shows **Online now**: unique visitors Vercel Web Analytics saw on that site in the last 5 minutes, refreshed every minute while the page is open. The total across all sites appears in the Website Monitor header and on the operations wall. Vercel has no true presence feed, so this is the nearest verified figure; it reads — until `VERCEL_ANALYTICS_TOKEN` and `ARENA_ACCESS_KEY` are set.
+
 Save to Scout lives in the Scout inspector and expanded card. Links, ideas and tags are searchable and stored only in this browser. Export JSON for a backup. No new service is required.
 
 Completion tracking uses the existing n8n instance's public API. Set `N8N_API_KEY` and `ARENA_ACCESS_KEY` privately in this Vercel project's production environment and redeploy. Create the API key in n8n Settings; use execution read access where scopes are supported. Never put either secret in GitHub or frontend code.

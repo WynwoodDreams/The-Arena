@@ -1,6 +1,11 @@
 /* Vercel Web Analytics integrated into existing Website Monitor cards. */
 .site-traffic{margin:0 0 13px;padding:12px 0 10px;border-top:1px solid #ffffff13;border-bottom:1px solid #ffffff0e}
-.site-traffic-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.site-traffic-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.site-online strong{color:var(--cyan,#4af3d1)}
+.site-traffic-muted .site-online{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.site-traffic-muted .site-online span{font:10px var(--mono);letter-spacing:.8px;color:var(--muted)}
+.site-traffic-muted .site-online strong{font:500 21px var(--mono)}
+.website-online{margin-left:10px}
 .site-traffic-values>div{display:flex;flex-direction:column;gap:6px;min-width:0}
 .site-traffic-values span{font:10px var(--mono);letter-spacing:.8px;color:var(--muted)}
 .site-traffic-values strong{font:500 21px var(--mono);color:var(--text)}

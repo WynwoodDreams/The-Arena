@@ -108,3 +108,24 @@ test("portfolio.json holds only public fields", () => {
     for (const k of ["tasks", "notes", "people", "files"]) assert.equal(k in p, false, `${id} must not carry ${k}`);
   }
 });
+
+test("analytics: reports online now per site and a total from the 5-minute window", async () => {
+  process.env.VERCEL_ANALYTICS_TOKEN = "t"; process.env.ARENA_ACCESS_KEY = "k";
+  const sites = require("../lib/analytics-sites.js");
+  global.fetch = async (u) => {
+    const url = new URL(u);
+    const minutes = (Date.parse(url.searchParams.get("until")) - Date.parse(url.searchParams.get("since"))) / 60000;
+    const short = minutes <= 5;
+    if (url.searchParams.get("projectId") === sites[0].project) return { ok: true, json: async () => ({ data: short ? { visitors: 3, pageviews: 4 } : { visitors: 100, pageviews: 150 } }) };
+    return { ok: false, status: 404, json: async () => ({ error: { code: "web_analytics_not_enabled" } }) };
+  };
+  const res = fakeRes();
+  await require("../api/analytics/sites.js")(req({ headers: { "x-arena-key": "k" }, body: {} }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.onlineWindowMinutes, 5);
+  assert.equal(res.body.sites[0].online, 3);
+  assert.equal(res.body.sites[0].visitors, 100);
+  assert.equal(res.body.sites[1].online, null);
+  assert.equal(res.body.totalOnline, 3);
+  assert.equal(res.body.onlineSites, 1);
+});
