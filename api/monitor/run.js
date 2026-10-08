@@ -1,38 +1,70 @@
-// Only configured public websites can be checked; clients cannot supply a URL.
-const sites = [{ id: "buildersbench", name: "BuildersBench", url: "https://www.buildersbench.dev/" }];
-
+// Fixed public websites only. Browser-supplied URLs are never fetched.
+const sites = [
+  {
+    "id": "buildersbench",
+    "name": "BuildersBench",
+    "url": "https://www.buildersbench.dev/",
+    "category": "Career projects",
+    "color": "#4bd6ff"
+  },
+  {
+    "id": "cob",
+    "name": "Opportunity Board",
+    "url": "https://cob-eta.vercel.app/",
+    "repository": "https://github.com/WynwoodDreams/COB",
+    "category": "Internships & jobs",
+    "color": "#b498ff"
+  },
+  {
+    "id": "arrestintelligence",
+    "name": "Arrest Intelligence",
+    "url": "https://www.arrestintelligence.com/",
+    "repository": "https://github.com/WynwoodDreams/miamiArrest-dashboard",
+    "category": "Public data dashboard",
+    "color": "#ffbd6b"
+  },
+  {
+    "id": "emriders",
+    "name": "EM Riders",
+    "url": "https://www.emriders.com/",
+    "repository": "https://github.com/WynwoodDreams/Emnova-Prjoect",
+    "category": "Motorcycle platform",
+    "color": "#4af3d1"
+  }
+];
+async function checkSite(site) {
+  const started = performance.now();
+  const checkedAt = new Date().toISOString();
+  const original = new URL(site.url);
+  const allowedHosts = new Set([original.hostname]);
+  if (original.hostname.startsWith("www.")) allowedHosts.add(original.hostname.slice(4));
+  const signal = AbortSignal.timeout(10000);
+  try {
+    let url = site.url;
+    let response;
+    for (let hop = 0; hop <= 3; hop++) {
+      response = await fetch(url, { method: "GET", redirect: "manual", headers: { "User-Agent": "AgentArena-Monitor/1.0", "Accept": "text/html" }, signal, cache: "no-store" });
+      if (response.body) await response.body.cancel();
+      if (response.status < 300 || response.status >= 400) break;
+      const location = response.headers.get("location");
+      if (!location || hop === 3) break;
+      const next = new URL(location, url);
+      if (next.protocol !== "https:" || next.port || next.username || next.password || !allowedHosts.has(next.hostname)) break;
+      url = next.href;
+    }
+    const status = response.ok ? "Online" : response.status >= 300 && response.status < 400 ? "Redirect" : "HTTP error";
+    return { ...site, status, httpStatus: response.status, responseTimeMs: Math.round(performance.now() - started), checkedAt };
+  } catch (error) {
+    return { ...site, status: error.name === "TimeoutError" || error.name === "AbortError" ? "Timeout" : "Unreachable", httpStatus: null, responseTimeMs: Math.round(performance.now() - started), checkedAt };
+  }
+}
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ success: false, status: "Failed", message: "Use POST to check websites." });
   }
-  const results = await Promise.all(sites.map(async (site) => {
-    const started = performance.now();
-    const checkedAt = new Date().toISOString();
-    try {
-      const response = await fetch(site.url, {
-        method: "GET",
-        redirect: "manual",
-        headers: { "User-Agent": "AgentArena-Monitor/1.0", "Accept": "text/html" },
-        signal: AbortSignal.timeout(10000),
-        cache: "no-store"
-      });
-      // No redirects to unconfigured hosts; no response body is needed.
-      if (response.body) await response.body.cancel();
-      const status = response.ok ? "Online" : response.status >= 300 && response.status < 400 ? "Redirect" : "HTTP error";
-      return { ...site, status, httpStatus: response.status, responseTimeMs: Math.round(performance.now() - started), checkedAt };
-    } catch (error) {
-      return { ...site, status: error.name === "TimeoutError" || error.name === "AbortError" ? "Timeout" : "Unreachable", httpStatus: null, responseTimeMs: Math.round(performance.now() - started), checkedAt };
-    }
-  }));
-  const healthy = results.every(site => site.status === "Online");
-  return res.status(200).json({
-    success: true,
-    agent: "monitor",
-    status: "Completed",
-    healthy,
-    message: healthy ? "BuildersBench is online. Website check completed." : "Website check completed. BuildersBench needs attention.",
-    sites: results
-  });
+  const results = await Promise.all(sites.map(checkSite));
+  const online = results.filter(site => site.status === "Online").length;
+  return res.status(200).json({ success: true, agent: "monitor", status: "Completed", healthy: online === sites.length, message: online === sites.length ? "All "+sites.length+" websites are online." : online+" of "+sites.length+" websites are online. Review the highlighted results.", sites: results });
 };

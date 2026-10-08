@@ -19,4 +19,8 @@
 
 ## Website Monitor
 
-Select **Monitor > Check website** to check BuildersBench through `/api/monitor/run`. The server reports HTTP status, response time, and the check time. Checks are on demand; traffic analytics and scheduled uptime monitoring are not connected. A completed check can still report a website error. Add future public websites to the fixed `sites` list in `api/monitor/run.js`; the endpoint never accepts arbitrary URLs from the browser and does not follow redirects. Scout and the other agents retain their existing behavior.
+The six stations include Scout and Monitor. Monitor replaces Guard's demo station and uses the orange robot in the room graphic.
+
+The dedicated website board checks BuildersBench, Christian's Opportunity Board, Arrest Intelligence, and EM Riders concurrently through `/api/monitor/run`. Select **Check all websites** in the board or Monitor inspector. Each card shows HTTP status, server response time, and the last check in Eastern Time, plus website and supplied GitHub shortcuts.
+
+Checks run on demand; traffic analytics and scheduled monitoring are not connected. A completed check can still report a website error. Only fixed public sites are fetched. HTTPS redirects are limited to the configured hostname (and its non-www variant for www domains); other redirects are reported rather than followed. Scout retains its existing n8n behavior.
