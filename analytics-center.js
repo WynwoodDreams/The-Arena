@@ -16,6 +16,10 @@
   let onlineTotal = null, onlineSites = 0, onlineWindow = 5, onlineCheckedAt = null;
 
   const safeNumber = n => Number.isFinite(n) && n >= 0 ? n.toLocaleString("en-US") : "—";
+  // Crowd tiers drive the badge and card animation: more people, more motion.
+  const TIERS = [[50,'peak','PEAK CROWD · 50+'],[20,'surge','SURGE · 20+'],[10,'hot','HOT · 10+'],[5,'busy','BUSY · 5+'],[1,'live','LIVE'],[0,'quiet','QUIET']];
+  function tierOf(n) { if (!Number.isFinite(n)) return {key:'unknown', label:'AWAITING ANALYTICS'}; const t = TIERS.find(([min]) => n >= min) || TIERS[TIERS.length-1]; return {key:t[1], label:t[2]}; }
+  let lastTierIndex = -1;
 
   function cardMarkup(site) {
     const live = current && current[site.id];
@@ -24,7 +28,7 @@
     const historical = snapshots[site.id];
     const record = verified ? live : historical;
     const onlineKnown = live && Number.isFinite(live.online);
-    const onlineCell = '<div class="site-online"><span>ONLINE NOW</span><strong>' + (onlineKnown ? safeNumber(live.online) : '—') + '</strong></div>';
+    const onlineCell = '<div class="site-online" data-tier="' + tierOf(onlineKnown ? live.online : NaN).key + '"><span>ONLINE NOW</span><strong><i class="so-dot" aria-hidden="true"></i>' + (onlineKnown ? safeNumber(live.online) : '—') + '</strong></div>';
     if (!record) {
       return '<div class="site-traffic site-traffic-muted">' + onlineCell +
         (disabled.has(site.id) ? "Web Analytics not enabled" : "No verified analytics available") +
@@ -77,8 +81,19 @@
     return 'ONLINE NOW · ' + safeNumber(onlineTotal) + partial;
   }
   function renderTotal() {
+    const tier = tierOf(onlineTotal);
+    const badge = document.getElementById('live-audience');
+    if (badge) {
+      const index = TIERS.findIndex(t => t[1] === tier.key);
+      badge.dataset.tier = tier.key;
+      document.getElementById('la-count').textContent = onlineTotal === null ? '—' : safeNumber(onlineTotal);
+      document.getElementById('la-tier').textContent = tier.label;
+      // Climbing into a bigger crowd tier gets a one-time burst.
+      if (lastTierIndex !== -1 && index !== -1 && index < lastTierIndex) { badge.classList.remove('la-levelup'); void badge.offsetWidth; badge.classList.add('la-levelup'); }
+      if (index !== -1) lastTierIndex = index;
+    }
     const header = document.getElementById('website-online');
-    if (header) { header.textContent = totalText(); header.title = onlineCheckedAt ? 'Visitors in the last ' + onlineWindow + ' min, checked ' + new Date(onlineCheckedAt).toLocaleTimeString() : 'Needs the private Vercel Analytics endpoint'; }
+    if (header) { header.dataset.tier = tier.key; header.textContent = totalText(); header.title = onlineCheckedAt ? 'Visitors in the last ' + onlineWindow + ' min, checked ' + new Date(onlineCheckedAt).toLocaleTimeString() : 'Needs the private Vercel Analytics endpoint'; }
     const wall = document.getElementById('wall-online');
     if (wall) wall.textContent = onlineTotal === null ? 'USERS · —' : 'USERS · ' + safeNumber(onlineTotal) + ' ONLINE';
   }
