@@ -67,9 +67,9 @@ const forgeProjects=siteConfig.filter(site=>site.repository);
 function emptyState(){return {runs:[],inbox:[],activity:[],sites:[],scout:null,flows:{}}}
 function readState(){try{const raw=JSON.parse(localStorage.getItem(STORAGE)||'null');if(!raw)return emptyState();return {runs:Array.isArray(raw.runs)?raw.runs.slice(0,100):[],inbox:Array.isArray(raw.inbox)?raw.inbox.slice(0,200):[],activity:Array.isArray(raw.activity)?raw.activity.slice(0,30):[],sites:Array.isArray(raw.sites)?raw.sites:[],scout:raw.scout||null,flows:raw.flows&&typeof raw.flows==='object'?raw.flows:(raw.grantRadar?{'grant-radar':raw.grantRadar}:{})}}catch{storageAvailable=false;return emptyState()}}
 let state=readState();
-const scoutRun={requestId:state.scout?.requestId,output:state.scout?.output,status:state.scout?.status==='Running'?'Unknown':state.scout?.status||'Ready',message:state.scout?.status==='Running'?'Previous request was interrupted. Check n8n before retrying.':state.scout?.message||''};
+const scoutRun={requestId:state.scout?.requestId,status:state.scout?.status==='Running'?'Unknown':state.scout?.status||'Ready',message:state.scout?.status==='Running'?'Previous request was interrupted. Check n8n before retrying.':state.scout?.message||''};
 // One status per Flow workflow, restored from the last visit. An interrupted request shows as Unknown.
-const flowRuns={};flowWorkflows.forEach(w=>{const saved=state.flows[w.id];flowRuns[w.id]={requestId:saved?.requestId,output:saved?.output,status:saved?.status==='Running'?'Unknown':saved?.status||'Ready',message:saved?.status==='Running'?'Previous request was interrupted. Check n8n Executions before retrying.':saved?.message||''}});
+const flowRuns={};flowWorkflows.forEach(w=>{const saved=state.flows[w.id];flowRuns[w.id]={requestId:saved?.requestId,status:saved?.status==='Running'?'Unknown':saved?.status||'Ready',message:saved?.status==='Running'?'Previous request was interrupted. Check n8n Executions before retrying.':saved?.message||''}});
 function flowSummary(){const list=Object.values(flowRuns);if(list.some(r=>r.status==='Running'))return 'Running';if(list.some(r=>r.status==='Started'))return 'Started';if(list.some(r=>r.status==='Failed'))return 'Failed';if(list.some(r=>r.status==='Unknown'))return 'Unknown';return 'Ready'}
 const monitorRun={status:'Ready',message:'',sites:siteConfig.map(site=>({status:'Not checked',httpStatus:null,responseTimeMs:null,checkedAt:null,...site,...state.sites.find(s=>s.id===site.id),...site}))};
 function saveState(){try{state.sites=monitorRun.sites;state.scout=scoutRun;state.flows=flowRuns;localStorage.setItem(STORAGE,JSON.stringify(state))}catch{storageAvailable=false}$('#storage-note').textContent=storageAvailable?'History and decisions saved in this browser · Other devices are not synced':'Browser storage unavailable · History lasts for this session'}
@@ -279,7 +279,7 @@ async function runScout(){
     const response=await apiFetch('/api/scout/run',{agent:'scout'},65000);
     let result;try{result=await response.json()}catch{throw new Error('Agent Arena returned an invalid response. Please try again.')}
     if(!response.ok || result.success!==true)throw new Error(result.message || 'Scout request failed.');
-    scoutRun.requestId=result.requestId;scoutRun.output=null;
+    scoutRun.requestId=result.requestId;scoutRun.finishedAt=null;
     const returnedStatus=String(result.status || '').toLowerCase();
     if(returnedStatus==='started' || returnedStatus==='running' || returnedStatus==='accepted'){
       // n8n acknowledges receipt immediately; actual completion is not yet tracked.
@@ -313,7 +313,7 @@ async function runFlow(id){
   const response=await apiFetch('/api/flow/run',{workflow:w.id},20000);
   let result;try{result=await response.json()}catch{throw new Error('Arena returned an invalid response. Check n8n Executions before retrying.')}
   if(!response.ok||result.success!==true||result.status!=='Started')throw new Error(result.message||w.name+' request failed.');
-  run.requestId=result.requestId;run.output=null;run.status='Started';run.message=result.message||w.name+' accepted by n8n. Final results are not synchronized.';
+  run.requestId=result.requestId;run.finishedAt=null;run.status='Started';run.message=result.message||w.name+' accepted by n8n. Final results are not synchronized.';
  }catch(error){
   run.status='Failed';run.message=error.name==='TimeoutError'?'Request timed out. Check n8n Executions before retrying.':error.message||'Could not start '+w.name+'.';
  }finally{
