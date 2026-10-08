@@ -1,5 +1,9 @@
 // Fixed public websites only. Browser-supplied URLs are never fetched.
 const sites = require("../../connections.js");
+const guard = require("../../lib/guard.js");
+// Results are reused for a short time per instance, so repeated page opens do not re-check every site.
+const CACHE_MS = 120000;
+let cache = null;
 async function checkSite(site) {
   const started = performance.now();
   const checkedAt = new Date().toISOString();
@@ -32,7 +36,12 @@ module.exports = async function handler(req, res) {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ success: false, status: "Failed", message: "Use POST to check websites." });
   }
-  const results = await Promise.all(sites.map(checkSite));
+  // Read-only, but still only for the Arena page itself.
+  const hit = guard.check(req, { requireKey: false });
+  if (hit) return guard.reject(res, hit);
+  let results, cached = false;
+  if (cache && Date.now() - cache.at < CACHE_MS) { results = cache.results; cached = true; }
+  else { results = await Promise.all(sites.map(checkSite)); cache = { at: Date.now(), results }; }
   const online = results.filter(site => site.status === "Online").length;
-  return res.status(200).json({ success: true, agent: "monitor", status: "Completed", healthy: online === sites.length, message: online === sites.length ? "All "+sites.length+" websites are online." : online+" of "+sites.length+" websites are online. Review the highlighted results.", sites: results });
+  return res.status(200).json({ success: true, agent: "monitor", status: "Completed", cached, healthy: online === sites.length, message: online === sites.length ? "All "+sites.length+" websites are online." : online+" of "+sites.length+" websites are online. Review the highlighted results.", sites: results });
 };

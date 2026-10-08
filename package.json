@@ -1,0 +1,12 @@
+{
+  "name": "the-arena",
+  "private": true,
+  "description": "Agent Arena operations room and MY Arena portfolio board",
+  "scripts": {
+    "screenshots": "node scripts/screenshots.js",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "playwright": "1.47.2"
+  }
+}

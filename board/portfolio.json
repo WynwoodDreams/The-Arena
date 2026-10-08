@@ -1,0 +1,175 @@
+{
+ "app": "my-arena-portfolio",
+ "version": 1,
+ "exported": "2026-10-08T17:27:25.868Z",
+ "meta": {
+  "name": "",
+  "intro": ""
+ },
+ "items": {
+  "buildersbench": {
+   "name": "BuildersBench",
+   "blurb": "Career projects",
+   "kind": "site",
+   "runs": "",
+   "pitch": "",
+   "stage": "live",
+   "tech": {
+    "host": [],
+    "backend": [],
+    "db": [],
+    "lang": [],
+    "ui": [],
+    "tools": []
+   },
+   "links": [
+    {
+     "label": "Open",
+     "url": "https://www.buildersbench.dev/"
+    }
+   ],
+   "thumb": "thumbs/buildersbench.jpg",
+   "order": 0
+  },
+  "cob": {
+   "name": "Opportunity Board",
+   "blurb": "Internships & jobs",
+   "kind": "site",
+   "runs": "",
+   "pitch": "",
+   "stage": "live",
+   "tech": {
+    "host": [],
+    "backend": [],
+    "db": [],
+    "lang": [],
+    "ui": [],
+    "tools": []
+   },
+   "links": [
+    {
+     "label": "Open",
+     "url": "https://cob-eta.vercel.app/"
+    },
+    {
+     "label": "GitHub",
+     "url": "https://github.com/WynwoodDreams/COB"
+    }
+   ],
+   "thumb": "thumbs/cob.jpg",
+   "order": 1
+  },
+  "arrestintelligence": {
+   "name": "Arrest Intelligence",
+   "blurb": "Public data dashboard",
+   "kind": "site",
+   "runs": "",
+   "pitch": "",
+   "stage": "live",
+   "tech": {
+    "host": [],
+    "backend": [],
+    "db": [],
+    "lang": [],
+    "ui": [],
+    "tools": []
+   },
+   "links": [
+    {
+     "label": "Open",
+     "url": "https://www.arrestintelligence.com/"
+    },
+    {
+     "label": "GitHub",
+     "url": "https://github.com/WynwoodDreams/miamiArrest-dashboard"
+    }
+   ],
+   "thumb": "thumbs/arrestintelligence.jpg",
+   "order": 2
+  },
+  "emriders": {
+   "name": "EM Riders",
+   "blurb": "Motorcycle platform",
+   "kind": "site",
+   "runs": "",
+   "pitch": "",
+   "stage": "live",
+   "tech": {
+    "host": [],
+    "backend": [],
+    "db": [],
+    "lang": [],
+    "ui": [],
+    "tools": []
+   },
+   "links": [
+    {
+     "label": "Open",
+     "url": "https://www.emriders.com/"
+    },
+    {
+     "label": "GitHub",
+     "url": "https://github.com/WynwoodDreams/Emnova-Prjoect"
+    }
+   ],
+   "thumb": "thumbs/emriders.jpg",
+   "order": 3
+  },
+  "mdpd": {
+   "name": "MDPD Dashboard",
+   "blurb": "Miami-Dade dashboard",
+   "kind": "site",
+   "runs": "",
+   "pitch": "",
+   "stage": "live",
+   "tech": {
+    "host": [],
+    "backend": [],
+    "db": [],
+    "lang": [],
+    "ui": [],
+    "tools": []
+   },
+   "links": [
+    {
+     "label": "Open",
+     "url": "https://mdpd-dashboard.vercel.app/"
+    },
+    {
+     "label": "GitHub",
+     "url": "https://github.com/WynwoodDreams/-mdpd-dashboard"
+    }
+   ],
+   "thumb": "thumbs/mdpd.jpg",
+   "order": 4
+  },
+  "environmental": {
+   "name": "Miami Environmental Intel",
+   "blurb": "Environmental intelligence",
+   "kind": "site",
+   "runs": "",
+   "pitch": "",
+   "stage": "live",
+   "tech": {
+    "host": [],
+    "backend": [],
+    "db": [],
+    "lang": [],
+    "ui": [],
+    "tools": []
+   },
+   "links": [
+    {
+     "label": "Open",
+     "url": "https://mia-environmental-intel.vercel.app/"
+    },
+    {
+     "label": "GitHub",
+     "url": "https://github.com/WynwoodDreams/mia-environmental-intel"
+    }
+   ],
+   "thumb": "thumbs/environmental.jpg",
+   "order": 5
+  }
+ }
+}

@@ -18,7 +18,25 @@ Run history (latest 100), activity (latest 30), decisions (latest 200), and late
 
 Serve `index.html` and the `api/` serverless endpoints. Set `N8N_SCOUT_WEBHOOK_URL` to the published n8n production webhook; optional Header Auth uses `N8N_SCOUT_AUTH_HEADER_NAME` and `N8N_SCOUT_AUTH_HEADER_VALUE`. Redeploy after environment changes. The webhook URL stays server-side.
 
-Opening the dashboard only runs the read-only website check. Scout and Grant Radar require their Run buttons. Public Scout endpoint access still requires appropriate access controls before sharing broadly because it can start paid workflows.
+Opening the dashboard only runs the read-only website check. Scout and Grant Radar require their Run buttons.
+
+## Endpoint protection
+
+All three endpoints (`lib/guard.js`) accept POST only from the Arena page itself: the request's `Origin` must match the site host, so other sites and plain command-line calls get 403. Monitor results are also reused for two minutes per server instance, so repeated page opens do not re-check every site.
+
+Scout and Grant Radar can start paid work, so they take one more step. Set `ARENA_ACCESS_KEY` on Vercel to any long random string. The first time a station is run, the page asks for that key once and keeps it in that browser. Without the variable, only the origin check applies. `vercel.json` also sets security headers (Content Security Policy, no framing, no sniffing).
+
+## Checks
+
+```
+npm test
+```
+
+runs the endpoint tests with a mocked n8n and a mocked web, so nothing is called for real.
+
+## Portfolio board
+
+`/board` is a separate, public-facing project board for interviews and presentations. See `board/README.md`.
 
 ## Next integration layer
 

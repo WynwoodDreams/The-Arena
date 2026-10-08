@@ -1,9 +1,11 @@
 // Fixed Grant Radar destination; webhook URL and optional auth stay server-side.
+const guard = require("../../lib/guard.js");
 module.exports = async function handler(req, res) {
  res.setHeader("Cache-Control", "no-store");
  if (req.method !== "POST") return res.status(405).json({success:false,status:"Failed",message:"Method not allowed"});
- const origin=req.headers?.origin;
- if(origin){try{if(new URL(origin).host!==req.headers.host)return res.status(403).json({success:false,status:"Failed",message:"Request origin not allowed"});}catch{return res.status(403).json({success:false,status:"Failed",message:"Request origin not allowed"});}}
+ // Grant Radar calls paid APIs from n8n, so it needs the page's origin and, when configured, the access key.
+ const hit = guard.check(req, {requireKey:true});
+ if (hit) return guard.reject(res, hit);
  let url;
  try{
   if(process.env.N8N_GRANT_RADAR_WEBHOOK_URL)url=new URL(process.env.N8N_GRANT_RADAR_WEBHOOK_URL);

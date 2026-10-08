@@ -149,6 +149,24 @@ function renderWebsites(){
   }).join('');
 }
 
+// All station requests go through here. When ARENA_ACCESS_KEY is set on Vercel, the server answers 401 once and the key entered here is kept in this browser.
+const KEY_STORE='arena-access-key';
+async function apiFetch(path,body,timeout){
+  const headers={'Content-Type':'application/json'};
+  let key=null;try{key=localStorage.getItem(KEY_STORE)}catch{}
+  if(key)headers['X-Arena-Key']=key;
+  const send=()=>fetch(path,{method:'POST',headers,body:JSON.stringify(body),signal:AbortSignal.timeout(timeout)});
+  let response=await send();
+  if(response.status!==401)return response;
+  const entered=(window.prompt('Enter your Arena access key to run this station.')||'').trim();
+  if(!entered)return response;
+  try{localStorage.setItem(KEY_STORE,entered)}catch{}
+  headers['X-Arena-Key']=entered;
+  response=await send();
+  if(response.status===401){try{localStorage.removeItem(KEY_STORE)}catch{}}
+  return response;
+}
+
 async function runMonitor(){
   if(monitorRun.status==='Running')return;
   monitorRun.status='Running';monitorRun.message='Checking all '+siteConfig.length+' websites…';
@@ -157,7 +175,7 @@ async function runMonitor(){
   const started=performance.now();
   try{
     if(location.protocol==='file:')throw new Error('Open the deployed Arena website to check your websites.');
-    const response=await fetch('/api/monitor/run',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}',signal:AbortSignal.timeout(15000)});
+    const response=await apiFetch('/api/monitor/run',{},15000);
     let result;try{result=await response.json()}catch{throw new Error('Monitor returned an invalid response. Please try again.')}
     if(!response.ok || result.success!==true || !Array.isArray(result.sites))throw new Error(result.message || 'Website check failed.');
     monitorRun.status='Completed';monitorRun.message=result.message;monitorRun.sites=result.sites;
@@ -179,7 +197,7 @@ async function runScout(){
   renderCards();renderDetails();log('scout','Running n8n workflow.');
   const started=performance.now();
   try{
-    const response=await fetch('/api/scout/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({agent:'scout'}),signal:AbortSignal.timeout(65000)});
+    const response=await apiFetch('/api/scout/run',{agent:'scout'},65000);
     let result;try{result=await response.json()}catch{throw new Error('Agent Arena returned an invalid response. Please try again.')}
     if(!response.ok || result.success!==true)throw new Error(result.message || 'Scout request failed.');
     const returnedStatus=String(result.status || '').toLowerCase();
@@ -211,7 +229,7 @@ async function runGrantRadar(){
  grantRadarRun.status='Running';grantRadarRun.message='Sending Grant Radar to n8n…';saveState();renderAll();log('flow','Starting Grant Radar.');
  try{
   if(location.protocol==='file:')throw new Error('Open the deployed Arena to run Grant Radar.');
-  const response=await fetch('/api/flow/run',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({workflow:'grant-radar'}),signal:AbortSignal.timeout(20000)});
+  const response=await apiFetch('/api/flow/run',{workflow:'grant-radar'},20000);
   let result;try{result=await response.json()}catch{throw new Error('Arena returned an invalid response. Check n8n Executions before retrying.')}
   if(!response.ok||result.success!==true||result.status!=='Started')throw new Error(result.message||'Grant Radar request failed.');
   grantRadarRun.status='Started';grantRadarRun.message=result.message||'Grant Radar accepted by n8n. Final results are not synchronized.';
