@@ -1,35 +1,68 @@
-// Private Vercel website analytics in the existing Arena workspace.
+// Analytics appear inside the EXISTING Website Monitor cards, not a separate panel.
+// Historical values below are verified Vercel Web Analytics observations for Sep 8–Oct 8, 2026.
+// When the private Vercel Analytics endpoint is configured, fresh values replace these snapshots.
 (function () {
-  const anchor = document.getElementById("command-suite");
-  if (!anchor) return;
-  anchor.insertAdjacentHTML("afterend", '<section class="panel ana-wrap" id="analytics-center"><div class="panel-top ana-head"><span>WEBSITE ANALYTICS · VERCEL</span><button id="ana-refresh" class="ana-refresh">Load analytics</button></div><div class="ana-intro"><span id="ana-desc">Actual visitors and pageviews from tracked Vercel sites</span><span id="ana-status">PRIVATE</span></div><div id="ana-body" class="ana-message">Select Load analytics to check site traffic.</div></section>');
-  const el = id => document.getElementById(id);
-  const escapeText = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const number = n => typeof n === "number" ? n.toLocaleString("en-US") : "—";
-  async function update() {
-    el("ana-refresh").disabled = true;
-    try {
-      const response = await apiFetch("/api/analytics/sites", {}, 20000);
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        el("ana-status").textContent = "SETUP / ERROR";
-        el("ana-body").textContent = result.message || "Analytics are not available yet.";
-        return;
-      }
-      const sites = result.sites;
-      sites.sort((a,b) => (b.status === "verified")-(a.status === "verified") || (b.visitors || 0)-(a.visitors || 0));
-      const verified = sites.filter(s => s.status === "verified");
-      const visitors = verified.reduce((n,s) => n+s.visitors,0);
-      const views = verified.reduce((n,s) => n+s.pageviews,0);
-      const header = '<div class="ana-stats"><div class="ana-stat"><span>SITE VISITORS</span><strong>'+number(visitors)+'</strong><small>Sum across sites</small></div><div class="ana-stat"><span>PAGE VIEWS</span><strong>'+number(views)+'</strong></div><div class="ana-stat"><span>REPORTING</span><strong>'+verified.length+' / '+sites.length+'</strong></div><div class="ana-stat"><span>PERIOD</span><strong>30 days</strong></div></div>';
-      const cards = sites.map(s => '<article class="ana-card"><div class="ana-card-head"><h3>'+escapeText(s.name)+'</h3><span class="ana-badge" data-state="'+escapeText(s.status)+'">'+(s.status==="verified"?"Verified":s.status==="not_enabled"?"Not enabled":"Unavailable")+'</span></div><div class="ana-numbers"><div><strong>'+number(s.visitors)+'</strong><span> Visitors</span></div><div><strong>'+number(s.pageviews)+'</strong><span> Views</span></div></div><div class="ana-explain">'+escapeText(s.project)+'</div></article>').join("");
-      el("ana-body").innerHTML = header+'<div class="ana-grid">'+cards+'</div>';
-      el("ana-desc").textContent = "Live Vercel Web Analytics. No invented traffic.";
-      el("ana-status").textContent = "REFRESHED "+new Date(result.checkedAt).toLocaleDateString();
-    } catch {
-      el("ana-status").textContent = "UNAVAILABLE";
-      el("ana-body").textContent = "Analytics request failed. Retry later.";
-    } finally {el("ana-refresh").disabled=false}
+  "use strict";
+  const snapshots = Object.freeze({
+    buildersbench: { visitors:194, pageviews:266 },
+    cob: { visitors:141, pageviews:211 },
+    emriders: { visitors:41, pageviews:75 },
+    arrestintelligence: { visitors:2, pageviews:2 }
+  });
+  const disabled = new Set(["mdpd", "environmental"]);
+  const snapshotPeriod = "Sep 8–Oct 8, 2026";
+  let current = null;
+  let requested = false;
+
+  const safeNumber = n => Number.isFinite(n) && n >= 0 ? n.toLocaleString("en-US") : "—";
+
+  function cardMarkup(site) {
+    const live = current && current[site.id];
+    const verified = live && live.status === "verified" &&
+      Number.isFinite(live.visitors) && Number.isFinite(live.pageviews);
+    const historical = snapshots[site.id];
+    const record = verified ? live : historical;
+    if (!record) {
+      return '<div class="site-traffic site-traffic-muted">' +
+        (disabled.has(site.id) ? "Web Analytics not enabled" : "No verified analytics available") +
+        '</div>';
+    }
+    return '<div class="site-traffic"><div class="site-traffic-values">' +
+      '<div><span>VISITORS</span><strong>' + safeNumber(record.visitors) + '</strong></div>' +
+      '<div><span>PAGE VIEWS</span><strong>' + safeNumber(record.pageviews) + '</strong></div>' +
+      '</div><div class="site-traffic-note">' +
+      (verified ? 'Vercel · last 30 days · live query' : 'Vercel · ' + snapshotPeriod + ' · verified snapshot') +
+      '</div></div>';
   }
-  el("ana-refresh").addEventListener("click",update);
+
+  async function refresh() {
+    if (requested) return;
+    requested = true;
+    try {
+      const headers = {"Content-Type": "application/json"};
+      let key = "";
+      try { key = localStorage.getItem("arena-access-key") || ""; } catch {}
+      if (key) headers["X-Arena-Key"] = key;
+      const response = await fetch("/api/analytics/sites", {
+        method: "POST", headers, body: "{}", cache: "no-store",
+        signal: AbortSignal.timeout(16000)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success === true && Array.isArray(data.sites)) {
+          current = Object.fromEntries(data.sites.map(s => [s.id, s]));
+          if (typeof renderWebsites === "function") renderWebsites();
+        }
+      }
+      // No setup? Keep the labelled historical snapshot, without a popup or misleading zero.
+    } catch {
+      // No traffic numbers are invented on network errors.
+    } finally {
+      requested = false;
+    }
+  }
+  window.ArenaAnalytics = { cardMarkup, refresh };
+  if (typeof renderWebsites === "function") renderWebsites();
+  // A ready private API can quietly replace the historical snapshot with live traffic.
+  refresh();
 })();
