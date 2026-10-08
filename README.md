@@ -23,3 +23,9 @@ Opening the dashboard only runs the read-only website check. Scout requires its 
 ## Next integration layer
 
 A shared authenticated database and callback/status endpoints are needed for n8n and other tools to send results and approval requests while the Arena is closed, synchronize devices, and resume external work after approval. That layer is not implemented in this version.
+
+## Operations-room layout
+
+The room opens with Chief's inbox closed. The pulsing **Chief inbox** button and Chief station open a modal side drawer with the existing decisions and history. Clicking another station's card, label, or robot opens its work columns. Monitor columns group healthy, issue, offline, and unknown results; other stations show recorded requests, reviews, and decision history. No work is fabricated for unconnected stations.
+
+CSS animates masked robot regions from the existing scene and station lights. Connected stations have ambient motion; running requests have faster motion; unconnected stations and failed connections are dim with slow motion. Scout's Started state still means accepted by n8n, not verified completion. Reduced-motion preferences disable animations.
