@@ -3,7 +3,8 @@ module.exports = async (req,res) => {
  res.setHeader('Cache-Control','no-store');
  if(req.method!=='POST')return res.status(405).json({success:false,message:'Method not allowed'});
  const hit=guard.check(req);if(hit)return guard.reject(res,hit);
- if(!process.env.N8N_API_KEY || !process.env.ARENA_ACCESS_KEY)return res.status(200).json({success:true,configured:false,message:'Completion tracking needs N8N_API_KEY and ARENA_ACCESS_KEY in Vercel. Keep both private.'});
+ const missing=['N8N_API_KEY','ARENA_ACCESS_KEY'].filter(name=>!process.env[name]);
+ if(missing.length)return res.status(200).json({success:true,configured:false,message:'Results are not connected yet. Add '+missing.join(' and ')+' to this Vercel project, then redeploy.'});
  let body=req.body;try{if(typeof body==='string')body=JSON.parse(body)}catch{body={}}
  const id=body?.requestId;
  if(!/^[a-f0-9-]{36}$/i.test(id||''))return res.status(400).json({success:false,message:'Invalid request ID'});
