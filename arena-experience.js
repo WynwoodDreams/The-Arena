@@ -209,7 +209,8 @@
   }
   window.ArenaMobile={
     onAgentSelect(id){
-      if(id==="chief"){closeSheet(false);return}
+      // Single-tap Chief opens the same inspector as every other agent.
+      // Chief's inbox remains accessible from its explicit button.
       openSheet();
     },
     close:closeSheet
