@@ -6,19 +6,19 @@ Six stations: Chief (Christian's decisions), Scout (research), Flow (automations
 
 - Scout calls the existing server-side `/api/scout/run` n8n integration. `Started` means n8n accepted the request; final workflow results are not synchronized yet.
 - Monitor checks BuildersBench, Opportunity Board, Arrest Intelligence, EM Riders, MDPD Dashboard, and Miami Environmental Intel automatically on opening and on refresh. These are homepage availability checks, not internal application, login, database, or GPS checks.
-- Flow and Pulse are labeled **Not connected**. Forge contains a linked project library; build progress is not connected. No simulated runs, costs, successes, or task counts are displayed.
+- Flow starts Grant Radar through `/api/flow/run`. Its immediate response is shown as **Started**; final results are not synchronized. Pulse is labeled **Not connected**. Forge contains a linked project library; build progress is not connected. No simulated runs, costs, successes, or task counts are displayed.
 
 ## Chief inbox and history
 
-Website errors and Scout follow-ups create review items. Repeated unresolved website issues are merged; a successful subsequent health check resolves the corresponding issue. Manual approval requests can be added using **Add decision**. Approve, Request changes, Reject, and Mark reviewed record local decisions only; they do not publish, deploy, or execute external jobs.
+Website errors and workflow follow-ups create review items. Repeated unresolved website issues are merged; a successful subsequent health check resolves the corresponding issue. Manual approval requests can be added using **Add decision**. Approve, Request changes, Reject, and Mark reviewed record local decisions only; they do not publish, deploy, or execute external jobs.
 
-Run history (latest 100), activity (latest 30), decisions (latest 200), and latest results are saved using browser localStorage. This is browser-specific and is not a shared backend, account login, or cross-device synchronization. Interrupted Scout requests are shown as Unknown and should be checked in n8n before retrying.
+Run history (latest 100), activity (latest 30), decisions (latest 200), and latest results are saved using browser localStorage. This is browser-specific and is not a shared backend, account login, or cross-device synchronization. Interrupted workflow requests are shown as Unknown and should be checked in n8n before retrying.
 
 ## Vercel configuration
 
 Serve `index.html` and the `api/` serverless endpoints. Set `N8N_SCOUT_WEBHOOK_URL` to the published n8n production webhook; optional Header Auth uses `N8N_SCOUT_AUTH_HEADER_NAME` and `N8N_SCOUT_AUTH_HEADER_VALUE`. Redeploy after environment changes. The webhook URL stays server-side.
 
-Opening the dashboard only runs the read-only website check. Scout requires its Run button. Public Scout endpoint access still requires appropriate access controls before sharing broadly because it can start paid workflows.
+Opening the dashboard only runs the read-only website check. Scout and Grant Radar require their Run buttons. Public Scout endpoint access still requires appropriate access controls before sharing broadly because it can start paid workflows.
 
 ## Next integration layer
 
@@ -33,3 +33,11 @@ CSS animates masked robot regions from the existing scene and station lights. Co
 ## Shared project registry
 
 Edit `connections.js` to add public website names, repository links, and live URLs once. Monitor's server endpoint and the browser use this same list; counts are derived from its length. Forge lists entries with repository links as project shortcuts, without claiming live build progress. Secrets and workflow webhooks must remain server-side.
+
+## Grant Radar connection
+
+The production webhook uses POST with Respond Immediately and must be published in n8n. Connect the Webhook trigger directly to Config; keep manual/schedule triggers separately connected to Config rather than routing them through Webhook.
+
+The server supports `N8N_GRANT_RADAR_WEBHOOK_URL`. When omitted, it derives the fixed `/webhook/agent-arena-grant-radar` path on the existing `N8N_SCOUT_WEBHOOK_URL` origin. This reuses the currently configured n8n host without exposing either URL to the browser. Optional Header Auth uses `N8N_GRANT_RADAR_AUTH_HEADER_NAME` and `N8N_GRANT_RADAR_AUTH_HEADER_VALUE`; Scout credentials are not reused for Grant Radar.
+
+Flow stores requests and Chief review items locally. HTTP acceptance does not prove the grant API calls completed. Scheduled runs and the paste-ready grant JSON are not sent back to the Arena until a callback/status integration is added.
