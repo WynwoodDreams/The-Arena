@@ -66,3 +66,26 @@
  .agent-focus-actions button,.agent-focus-actions a{flex:1 1 155px;font-size:12px}
 }
 @media(prefers-reduced-motion:reduce){.agent-focus-dialog[open]{animation:none}.agent-focus-indicator{animation:none}}
+
+/* Visible full-card control in the standard Agent Inspector. */
+.inspector .panel-top #agent-focus-open{
+ display:inline-flex;align-items:center;justify-content:center;
+ padding:6px 9px;min-height:32px;margin-left:auto;flex-shrink:0;
+ border:1px solid #eab38a85;border-radius:6px;
+ background:#ffae7420;color:#fbd5ab;
+ font:10px var(--mono);letter-spacing:.25px;
+}
+.inspector .panel-top #agent-focus-open:hover{background:#ffc08834;color:#fff1dc;transform:none}
+.inspector .panel-top #agent-no{white-space:nowrap}
+.agent-focus-trigger{display:none}
+@media(max-width:810px){
+ .workgrid .inspector .panel-top #agent-focus-open{
+   min-height:44px;padding:9px 11px;margin-left:auto;font-size:11px
+ }
+ .workgrid .inspector .panel-top #agent-no{display:none}
+}
+@media(max-width:380px){
+ .workgrid .inspector .panel-top{gap:6px;padding-inline:9px}
+ .workgrid .inspector .panel-top>span:first-child{font-size:10px}
+ .workgrid .inspector .panel-top #agent-focus-open{padding:8px;font-size:10px}
+}
