@@ -26,6 +26,15 @@
     "name": "AI Jobs Monitor",
     "detail": "Indeed v3 with Slack summaries. Runs from the Scout station.",
     "station": "scout"
+  },
+  {
+    "id": "jev-gate-ai-jobs-monitor",
+    "name": "(Jev gate) AI Jobs Monitor",
+    "detail": "AI jobs monitor behind the Jev gate (n8n workflow IzqCVxf9pis8m69R)",
+    "path": "/webhook/agent-arena-jev-gate-ai-jobs-monitor",
+    "envUrl": "N8N_JEV_GATE_AI_JOBS_MONITOR_WEBHOOK_URL",
+    "envHeaderName": "N8N_JEV_GATE_AI_JOBS_MONITOR_AUTH_HEADER_NAME",
+    "envHeaderValue": "N8N_JEV_GATE_AI_JOBS_MONITOR_AUTH_HEADER_VALUE"
   }
 ];
   if(typeof module === "object" && module.exports) module.exports = workflows;
