@@ -16,7 +16,7 @@
     '<div class="cmd-meta">Run a connected workflow or inspect its last acknowledged request.</div>',
     '<div class="cmd-list" id="cmd-mission-list" aria-live="polite"></div>',
     '<div class="cmd-history"><div class="cmd-history-heading">REQUEST HISTORY <span>THIS BROWSER</span></div><div id="cmd-run-list"></div></div>',
-    '<p class="cmd-note">Started = accepted by n8n, not finished. No completion or progress is invented. Executions are not yet synchronized.</p></section></section>'
+    '<p class="cmd-note">Started = accepted by n8n, not finished. No completion or progress is invented. Completion and final-node output are retrieved when private n8n API access is configured.</p></section></section>'
   ].join("");
   after.insertAdjacentHTML("afterend",html);
 
@@ -94,7 +94,7 @@
     const all=[{id:"scout",name:"Scout · AI Jobs Monitor",station:"Scout",status:scoutRun.status,message:scoutRun.message},...workflows.map(w=>({id:w.id,name:w.name,station:"Flow",status:flowRuns[w.id]?.status||"Ready",message:flowRuns[w.id]?.message||w.detail}))];
     $("cmd-mission-list").innerHTML=all.map(m=>{
       const started=m.status==="Started";
-      const message=started?"n8n accepted the request; the final execution result is not yet connected.":m.message||"Ready. No request submitted yet.";
+      const message=started?"n8n accepted the request; waiting for a saved execution result.":m.message||"Ready. No request submitted yet.";
       return '<article class="cmd-card"><div class="cmd-card-head"><div><h3>'+esc(m.name)+'</h3><small>'+esc(m.station)+' · n8n</small></div><span class="cmd-state" data-state="'+esc(m.status)+'">'+esc(m.status)+'</span></div>'+
        '<p class="cmd-detail">'+esc(message)+'</p><div class="cmd-links"><button type="button" data-cmd-run="'+esc(m.id)+'"'+(m.status==="Running"?" disabled":"")+">"+(m.status==="Running"?"Sending…":"Run "+esc(m.station==="Scout"?"Scout":m.name))+"</button></div></article>";
     }).join("");

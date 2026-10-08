@@ -1,3 +1,4 @@
+const {randomUUID}=require('crypto');
 // Starts one registered n8n workflow. Webhook hosts and optional auth stay server-side.
 const guard = require("../../lib/guard.js");
 const workflows = require("../../workflows.js");
@@ -24,12 +25,13 @@ module.exports = async function handler(req, res) {
  }catch{
   return res.status(500).json({success:false,status:"Failed",message:wf.name+" webhook is not configured. Set "+wf.envUrl+" on Vercel."});
  }
+ const requestId=randomUUID();
  try{
   const headers={"Content-Type":"application/json"};
   if(process.env[wf.envHeaderValue])headers[process.env[wf.envHeaderName]||"X-Agent-Arena-Key"]=process.env[wf.envHeaderValue];
   const response=await fetch(url.toString(),{
    method:"POST",headers,redirect:"error",
-   body:JSON.stringify({agent:"flow",workflow:wf.id,source:"agent-arena",requestedAt:new Date().toISOString()}),
+   body:JSON.stringify({agent:"flow",workflow:wf.id,arenaRequestId:requestId,source:"agent-arena",requestedAt:new Date().toISOString()}),
    signal:AbortSignal.timeout(15000)
   });
   if(!response.ok){
@@ -37,7 +39,7 @@ module.exports = async function handler(req, res) {
    return res.status(502).json({success:false,status:"Failed",message});
   }
   // Immediately acknowledges receipt. Never infer final completion from HTTP success.
-  return res.status(202).json({success:true,agent:"flow",workflow:wf.id,status:"Started",message:wf.name+" started in n8n. Check n8n Executions for the completed results."});
+  return res.status(202).json({success:true,requestId,agent:"flow",workflow:wf.id,status:"Started",message:wf.name+" started in n8n. Check n8n Executions for the completed results."});
  }catch{
   return res.status(502).json({success:false,status:"Failed",message:"Could not confirm "+wf.name+" acceptance. Check n8n Executions before retrying."});
  }

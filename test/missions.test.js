@@ -1,0 +1,9 @@
+const {test,afterEach}=require('node:test');const assert=require('node:assert/strict');const handler=require('../api/missions/status');const original=global.fetch,env={...process.env};afterEach(()=>{global.fetch=original;process.env={...env}});
+const id='12345678-1234-1234-1234-123456789012';
+function res(){return {setHeader(){},status(n){this.code=n;return this},json(body){this.body=body;return this}}}
+function req(){return {method:'POST',headers:{host:'arena.test',origin:'https://arena.test','x-arena-key':'access'},body:{requestId:id}}}
+function setup(){process.env.ARENA_ACCESS_KEY='access';process.env.N8N_API_KEY='private';process.env.N8N_SCOUT_WEBHOOK_URL='https://n8n.test/webhook/scout'}
+test('missing configuration does not fabricate completion',async()=>{delete process.env.N8N_API_KEY;const r=res();await handler(req(),r);assert.equal(r.body.configured,false)});
+test('matches own execution and returns real final output',async()=>{setup();const data={resultData:{lastNodeExecuted:'Result',runData:{Webhook:[{data:{main:[[{json:{body:{arenaRequestId:id}}}]]}}],Result:[{data:{main:[[{json:{jobs:3}}]]}}]}}};global.fetch=async()=>({ok:true,json:async()=>({data:[{id:'other',status:'success',data:{}},{id:'mine',status:'success',data}]})});const r=res();await handler(req(),r);assert.equal(r.body.status,'Completed');assert.equal(r.body.executionId,'mine');assert.deepEqual(JSON.parse(r.body.output),[{jobs:3}])});
+test('unrelated success stays Started',async()=>{setup();global.fetch=async()=>({ok:true,json:async()=>({data:[{id:'other',status:'success',data:{}}]})});const r=res();await handler(req(),r);assert.equal(r.body.status,'Started')});
+test('rejects wrong access key before reading executions',async()=>{setup();const q=req();q.headers['x-arena-key']='wrong';global.fetch=()=>{throw Error('must not fetch')};const r=res();await handler(q,r);assert.equal(r.code,401)});

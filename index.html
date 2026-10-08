@@ -67,9 +67,9 @@ const forgeProjects=siteConfig.filter(site=>site.repository);
 function emptyState(){return {runs:[],inbox:[],activity:[],sites:[],scout:null,flows:{}}}
 function readState(){try{const raw=JSON.parse(localStorage.getItem(STORAGE)||'null');if(!raw)return emptyState();return {runs:Array.isArray(raw.runs)?raw.runs.slice(0,100):[],inbox:Array.isArray(raw.inbox)?raw.inbox.slice(0,200):[],activity:Array.isArray(raw.activity)?raw.activity.slice(0,30):[],sites:Array.isArray(raw.sites)?raw.sites:[],scout:raw.scout||null,flows:raw.flows&&typeof raw.flows==='object'?raw.flows:(raw.grantRadar?{'grant-radar':raw.grantRadar}:{})}}catch{storageAvailable=false;return emptyState()}}
 let state=readState();
-const scoutRun={status:state.scout?.status==='Running'?'Unknown':state.scout?.status||'Ready',message:state.scout?.status==='Running'?'Previous request was interrupted. Check n8n before retrying.':state.scout?.message||''};
+const scoutRun={requestId:state.scout?.requestId,output:state.scout?.output,status:state.scout?.status==='Running'?'Unknown':state.scout?.status||'Ready',message:state.scout?.status==='Running'?'Previous request was interrupted. Check n8n before retrying.':state.scout?.message||''};
 // One status per Flow workflow, restored from the last visit. An interrupted request shows as Unknown.
-const flowRuns={};flowWorkflows.forEach(w=>{const saved=state.flows[w.id];flowRuns[w.id]={status:saved?.status==='Running'?'Unknown':saved?.status||'Ready',message:saved?.status==='Running'?'Previous request was interrupted. Check n8n Executions before retrying.':saved?.message||''}});
+const flowRuns={};flowWorkflows.forEach(w=>{const saved=state.flows[w.id];flowRuns[w.id]={requestId:saved?.requestId,output:saved?.output,status:saved?.status==='Running'?'Unknown':saved?.status||'Ready',message:saved?.status==='Running'?'Previous request was interrupted. Check n8n Executions before retrying.':saved?.message||''}});
 function flowSummary(){const list=Object.values(flowRuns);if(list.some(r=>r.status==='Running'))return 'Running';if(list.some(r=>r.status==='Started'))return 'Started';if(list.some(r=>r.status==='Failed'))return 'Failed';if(list.some(r=>r.status==='Unknown'))return 'Unknown';return 'Ready'}
 const monitorRun={status:'Ready',message:'',sites:siteConfig.map(site=>({status:'Not checked',httpStatus:null,responseTimeMs:null,checkedAt:null,...site,...state.sites.find(s=>s.id===site.id),...site}))};
 function saveState(){try{state.sites=monitorRun.sites;state.scout=scoutRun;state.flows=flowRuns;localStorage.setItem(STORAGE,JSON.stringify(state))}catch{storageAvailable=false}$('#storage-note').textContent=storageAvailable?'History and decisions saved in this browser · Other devices are not synced':'Browser storage unavailable · History lasts for this session'}
@@ -177,7 +177,7 @@ function renderDetails(){
  let content='<div class="inspect-head"><span class="agent-icon big-icon">'+a.icon+'</span><div><h2>'+a.name+'</h2><p>'+a.role.toUpperCase()+'</p></div></div><div class="detail-label">CURRENT ASSIGNMENT</div><p class="current-task">'+a.task+'</p>';
  if(a.id==='chief')content+='<p class="inspect-note">You are Chief. Open your inbox to review incoming issues and record decisions.</p><div class="detail-row"><span>Awaiting you</span><strong>'+pending().length+'</strong></div><p class="inspect-note">Recorded approvals do not publish posts or deploy builds. Those station connections come next.</p><button class="inspect-button" id="open-chief-inbox">Open Chief inbox</button>';
  else if(a.id==='monitor')content+='<button class="inspect-button" id="agent-run" '+(monitorRun.status==='Running'?'disabled':'')+'>'+(monitorRun.status==='Running'?'Checking…':'Check all websites')+'</button>'+monitorResults();
- else if(a.id==='scout'){content+='<p class="inspect-note">AI Jobs Monitor searches Indeed and posts summaries to Slack through n8n. Started means accepted by n8n; final results are not yet synchronized.</p><button class="inspect-button" id="agent-run" '+(scoutRun.status==='Running'?'disabled':'')+'>'+(scoutRun.status==='Running'?'Running…':'Run AI Jobs Monitor')+'</button><p class="scout-message">'+escapeHtml(scoutRun.status+': '+scoutRun.message)+'</p><div class="scout-library"><div class="detail-label">NOTEBOOKLM RESEARCH · '+scoutResearchTitles.length+' TITLES</div><input id="scout-research-filter" aria-label="Find research title" placeholder="Filter research titles…" autocomplete="off"><div id="scout-research-list" class="scout-research-list"></div></div>';}
+ else if(a.id==='scout'){content+='<p class="inspect-note">AI Jobs Monitor searches Indeed and posts summaries to Slack through n8n. Started means accepted by n8n; execution results appear below when tracking is connected.</p><button class="inspect-button" id="agent-run" '+(scoutRun.status==='Running'?'disabled':'')+'>'+(scoutRun.status==='Running'?'Running…':'Run AI Jobs Monitor')+'</button><p class="scout-message">'+escapeHtml(scoutRun.status+': '+scoutRun.message)+'</p><div class="scout-library"><div class="detail-label">NOTEBOOKLM RESEARCH · '+scoutResearchTitles.length+' TITLES</div><input id="scout-research-filter" aria-label="Find research title" placeholder="Filter research titles…" autocomplete="off"><div id="scout-research-list" class="scout-research-list"></div></div>';}
  else if(a.id==='flow'){
   content+='<p class="inspect-note">Your n8n workflows. Settings such as college lists, feeds, and dates stay configured in n8n.</p>';
   workflowConfig.forEach(w=>{
@@ -279,6 +279,7 @@ async function runScout(){
     const response=await apiFetch('/api/scout/run',{agent:'scout'},65000);
     let result;try{result=await response.json()}catch{throw new Error('Agent Arena returned an invalid response. Please try again.')}
     if(!response.ok || result.success!==true)throw new Error(result.message || 'Scout request failed.');
+    scoutRun.requestId=result.requestId;scoutRun.output=null;
     const returnedStatus=String(result.status || '').toLowerCase();
     if(returnedStatus==='started' || returnedStatus==='running' || returnedStatus==='accepted'){
       // n8n acknowledges receipt immediately; actual completion is not yet tracked.
@@ -312,7 +313,7 @@ async function runFlow(id){
   const response=await apiFetch('/api/flow/run',{workflow:w.id},20000);
   let result;try{result=await response.json()}catch{throw new Error('Arena returned an invalid response. Check n8n Executions before retrying.')}
   if(!response.ok||result.success!==true||result.status!=='Started')throw new Error(result.message||w.name+' request failed.');
-  run.status='Started';run.message=result.message||w.name+' accepted by n8n. Final results are not synchronized.';
+  run.requestId=result.requestId;run.output=null;run.status='Started';run.message=result.message||w.name+' accepted by n8n. Final results are not synchronized.';
  }catch(error){
   run.status='Failed';run.message=error.name==='TimeoutError'?'Request timed out. Check n8n Executions before retrying.':error.message||'Could not start '+w.name+'.';
  }finally{
@@ -329,4 +330,4 @@ $('#add-decision').onclick=()=>{openInbox();const form=$('#decision-form');form.
 $('#decision-form').onsubmit=e=>{e.preventDefault();const title=$('#decision-title').value.trim(),detail=$('#decision-detail').value.trim(),agent=$('#decision-agent').value;if(!title)return;upsertDecision('manual-'+crypto.randomUUID(),agent,title,detail||'Review this item and record your decision.','approval');saveState();renderAll();$('#decision-form').reset();$('#decision-form').hidden=true;toast('Added to Chief’s inbox.')};
 $('#sound').onclick=()=>{sound=!sound;$('#sound').textContent=sound?'Sound on':'Sound off';$('#sound').setAttribute('aria-pressed',String(sound));beep()};
 function tick(){$('#clock').textContent=new Date().toISOString().slice(11,19)}tick();setInterval(tick,1000);saveState();renderAll();runMonitor();
-</script><script src="/command-center.js"></script><script src="/analytics-center.js"></script><script src="/arena-experience.js"></script><script src="/agent-focus.js"></script></body></html>
+</script><script src="/command-center.js"></script><script src="/analytics-center.js"></script><script src="/arena-experience.js"></script><script src="/agent-focus.js"></script><script src="/scout-tools.js"></script></body></html>

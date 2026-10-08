@@ -68,3 +68,13 @@ The production webhook uses POST with Respond Immediately and must be published 
 The server supports `N8N_GRANT_RADAR_WEBHOOK_URL`. When omitted, it derives the fixed `/webhook/agent-arena-grant-radar` path on the existing `N8N_SCOUT_WEBHOOK_URL` origin. This reuses the currently configured n8n host without exposing either URL to the browser. Optional Header Auth uses `N8N_GRANT_RADAR_AUTH_HEADER_NAME` and `N8N_GRANT_RADAR_AUTH_HEADER_VALUE`; Scout credentials are not reused for Grant Radar.
 
 Flow stores requests and Chief review items locally. HTTP acceptance does not prove the grant API calls completed. Scheduled runs and the paste-ready grant JSON are not sent back to the Arena until a callback/status integration is added.
+
+## Scout saves and real mission results
+
+Save to Scout lives in the Scout inspector and expanded card. Links, ideas and tags are searchable and stored only in this browser. Export JSON for a backup. No new service is required.
+
+Completion tracking uses the existing n8n instance's public API. Set `N8N_API_KEY` and `ARENA_ACCESS_KEY` privately in this Vercel project's production environment and redeploy. Create the API key in n8n Settings; use execution read access where scopes are supported. Never put either secret in GitHub or frontend code.
+
+Enable saving successful and failed production execution data in n8n workflow settings. Arena sends a unique `arenaRequestId` in the webhook body and matches that ID in saved execution data; workflows need no new response nodes. Runs submitted before this update cannot be matched. Polling examines the newest 100 saved executions, every 10 seconds while the page is visible. A missing/pruned execution remains Started; API errors do not imply a failed workflow.
+
+The result is the last executed node's actual JSON, limited to 20 items and 30,000 characters. If the last node is Slack, this is Slack output, not a full job dataset. A custom results node can be added later if desired.
