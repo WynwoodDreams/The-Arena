@@ -115,7 +115,16 @@
    const scene=document.querySelector(".scene>img");
    if(art&&scene?.src){
      art.style.backgroundImage='url("'+scene.src+'")';
-     art.style.backgroundPosition=a.x+"% "+a.y+"%";
+     // Center the chosen robot in the cropped illustration, regardless of art size.
+     const box=art.getBoundingClientRect();
+     const scale=window.matchMedia("(max-width:810px)").matches?2.30:2.95;
+     const imageWidth=box.width*scale;
+     const imageHeight=scene.naturalWidth?imageWidth*scene.naturalHeight/scene.naturalWidth:imageWidth*9/16;
+     const clamp=(n,min,max)=>Math.min(max,Math.max(min,n));
+     const pos=(fraction,full,visible)=>full>visible?
+       clamp(100*(fraction*full-visible/2)/(full-visible),0,100):50;
+     art.style.backgroundPosition=
+       pos(a.x/100,imageWidth,box.width)+"% "+pos(a.y/100,imageHeight,box.height)+"%";
    }
    root.scrollTop=oldY;
  }
