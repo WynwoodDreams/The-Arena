@@ -66,6 +66,22 @@ test("flow: derives the Grant Radar path from the Scout host", async () => {
   assert.equal(url, "https://n8n.test/webhook/agent-arena-grant-radar");
 });
 
+test("flow: starts Agent Ideas on the Scout host and rejects unknown workflows", async () => {
+  delete process.env.N8N_AGENT_IDEAS_WEBHOOK_URL;
+  process.env.N8N_SCOUT_WEBHOOK_URL = "https://n8n.test/webhook/agent-arena-scout";
+  let url = null, sent = null;
+  global.fetch = async (u, o) => { url = u; sent = JSON.parse(o.body); return { ok: true, status: 200 }; };
+  const handler = require("../api/flow/run.js");
+  const a = fakeRes(); await handler(req({ body: { workflow: "agent-ideas" } }), a);
+  assert.equal(a.statusCode, 202);
+  assert.equal(url, "https://n8n.test/webhook/agent-arena-agent-ideas");
+  assert.equal(sent.workflow, "agent-ideas");
+  const b = fakeRes(); await handler(req({ body: { workflow: "ai-jobs-monitor" } }), b);
+  assert.equal(b.statusCode, 400, "Scout-driven workflow is not startable from Flow");
+  const c = fakeRes(); await handler(req({ body: { workflow: "../etc" } }), c);
+  assert.equal(c.statusCode, 400);
+});
+
 test("monitor: checks every site once, then serves the cache", async () => {
   let hits = 0;
   global.fetch = async () => { hits++; return { ok: true, status: 200, headers: { get: () => null }, body: { cancel: async () => {} } }; };
