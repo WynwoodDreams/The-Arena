@@ -20,7 +20,19 @@ module.exports = async (req,res) => {
   const status=execution.status==='success'?'Completed':['error','crashed','canceled'].includes(execution.status)?'Failed':'Running';
   const last=result.lastNodeExecuted;
   const runs=result.runData?.[last]||[];
-  const output=(runs.at(-1)?.data?.main||[]).flat().slice(0,20).map(item=>item.json);
-  return res.json({success:true,configured:true,status,executionId:execution.id,finishedAt:execution.stoppedAt||null,message:status==='Failed'?'n8n execution failed.':status==='Completed'?'n8n execution completed.':'n8n is executing this mission.',output:JSON.stringify(output).slice(0,30000),lastNode:last||null});
+  const finalOutput=(runs.at(-1)?.data?.main||[]).flat().slice(0,20).map(item=>item.json);
+  // Prefer content-producing nodes over acknowledgements, counters and transport receipts.
+  const candidates=Object.entries(result.runData||{}).filter(([name])=>!/webhook|trigger|credential|log success|respond to webhook/i.test(name)).map(([name,nodeRuns])=>{
+   const items=(nodeRuns.at(-1)?.data?.main||[]).flat().slice(0,20).map(item=>item.json);
+   const meaningful=items.some(item=>item&&Object.entries(item).some(([key,value])=>/^(output|text|content|summary|ideas?|jobs?|results?|title|description|message)$/i.test(key)&&(typeof value==='string'?value.length>100:Array.isArray(value)?value.length>0:typeof value==='object'&&value!==null)));
+   const score=(meaningful?100:0)+(/summar|generat|agent|idea|result|format|analy/i.test(name)?20:0)-(/slack|log|status|count/i.test(name)?40:0);
+   return {node:name,items,score};
+  }).filter(candidate=>candidate.items.length).sort((a,b)=>b.score-a.score);
+  const selected=candidates[0];
+  const useful=selected&&selected.score>0;
+  const output=useful?selected.items:finalOutput;
+  const outputNode=useful?selected.node:last;
+  const outputs=candidates.slice(0,8).map(candidate=>({node:candidate.node,output:JSON.stringify(candidate.items).slice(0,30000)}));
+  return res.json({success:true,configured:true,status,executionId:execution.id,finishedAt:execution.stoppedAt||null,message:status==='Failed'?'n8n execution failed.':status==='Completed'?'n8n execution completed.':'n8n is executing this mission.',output:JSON.stringify(output).slice(0,30000),lastNode:outputNode||null,outputs,finalNode:last||null});
  }catch(error){return res.status(502).json({success:false,message:error.message==='configuration'?'Invalid n8n configuration.':'Unable to read n8n executions. Check API access and saved execution data.'})}
 };
