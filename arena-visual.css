@@ -321,3 +321,18 @@ header{height:0;border:none;overflow:hidden;padding:0}
 @media(prefers-reduced-motion:reduce){
  .workgrid .inspector,.arena-sheet-backdrop{transition:none}
 }
+
+/* Final small-screen readability and touch refinements. */
+@media(hover:none) and (pointer:coarse){
+ .arena-rail a,.arena-rail button,.agent-card,.carousel-quick-controls button,.cmd-links a,.cmd-links button,.website-links a,.inspect-button{touch-action:manipulation}
+ .agent-card:hover,.cmd-card:hover,.website-card:hover{transform:none}
+}
+@media(max-width:810px){
+ .arena-rail .rail-label{font-size:11px}
+ .website-category,.health-pill{font-size:11px}
+ .website-domain,.website-checked,.site-traffic-note{font-size:12px}
+ .cmd-source,.cmd-state{font-size:11px}
+ .cmd-note,.website-footnote{font-size:12px;line-height:1.5}
+ .metrics p{font-size:12px}
+ .room .panel-top .muted{white-space:normal;text-align:right;line-height:1.3}
+}
