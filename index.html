@@ -26,7 +26,7 @@
 .arena-wall-metrics strong{font:600 clamp(12px,1.7vw,24px) var(--sans);line-height:1.1;letter-spacing:-.5px;color:#effbff}
 .arena-wall-foot{padding-top:4px;border-top:1px solid #55bcf522}
 @media(max-width:850px){.arena-wall{padding:.75% 1%;gap:1px}.arena-wall-head,.arena-wall-foot{font-size:6px}.arena-wall-metrics>div{padding:2px 3px}.arena-wall-metrics small{font-size:5px}.arena-wall-metrics strong{font-size:clamp(9px,1.7vw,14px)}}
-</style></head>
+</style><link rel="stylesheet" href="/command-center.css"></head>
 <body><div class="shell"><header><a class="brand" href="#"><span class="mark">A</span> AGENT<span class="thin">ARENA</span><span class="version">/ 01</span></a><div class="head-right"><span class="demo">SCOUT + FLOW + MONITOR / CONNECTED</span><time id="clock">00:00:00</time><span class="utc">UTC</span></div></header>
 <main><div class="toolbar"><div><span class="eyebrow">CHRISTIAN'S WORKSPACE</span><h1>Your command center<span>.</span></h1></div><div class="controls"><button id="sound" aria-pressed="false" title="Enable sound">Sound off</button><button id="inbox-button" class="inbox-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="inbox-dialog"><span class="inbox-light" aria-hidden="true"></span> Chief inbox <span id="inbox-badge">0</span></button><button class="primary" id="refresh-health">Refresh health</button></div></div>
 <section class="agents" aria-label="Agent workstations" id="agents"></section>
@@ -183,7 +183,7 @@ function renderWallMonitor(){
   const recent=state.runs[0];
   put('wall-recent',recent?'LATEST RUN · '+String(recent.agent||recent.station||'ARENA').toUpperCase():'LOCAL DATA');
 }
-function renderAll(){renderCards();renderDetails();renderWebsites();renderInbox();renderMetrics();renderHistory();renderFeed();renderColumns();renderWallMonitor()}
+function renderAll(){renderCards();renderDetails();renderWebsites();renderInbox();renderMetrics();renderHistory();renderFeed();renderColumns();renderWallMonitor();window.ArenaCommand?.refreshViews()}
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3500)}
 function beep(){if(!sound)return;try{const ctx=new (window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator(),g=ctx.createGain();g.gain.value=.025;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.15);o.onended=()=>ctx.close()}catch{}}
 function renderWebsites(){
@@ -243,7 +243,7 @@ async function runScout(){
   if(scoutRun.status==='Running')return;
   scoutRun.status='Running';scoutRun.message='Waiting for n8n…';
   const scout=agents.find(a=>a.id==='scout');scout.progress=0;
-  renderCards();renderDetails();log('scout','Starting AI Jobs Monitor in n8n.');
+  renderCards();renderDetails();window.ArenaCommand?.refreshViews();log('scout','Starting AI Jobs Monitor in n8n.');
   const started=performance.now();
   try{
     const response=await apiFetch('/api/scout/run',{agent:'scout'},65000);
@@ -299,4 +299,4 @@ $('#add-decision').onclick=()=>{openInbox();const form=$('#decision-form');form.
 $('#decision-form').onsubmit=e=>{e.preventDefault();const title=$('#decision-title').value.trim(),detail=$('#decision-detail').value.trim(),agent=$('#decision-agent').value;if(!title)return;upsertDecision('manual-'+crypto.randomUUID(),agent,title,detail||'Review this item and record your decision.','approval');saveState();renderAll();$('#decision-form').reset();$('#decision-form').hidden=true;toast('Added to Chief’s inbox.')};
 $('#sound').onclick=()=>{sound=!sound;$('#sound').textContent=sound?'Sound on':'Sound off';$('#sound').setAttribute('aria-pressed',String(sound));beep()};
 function tick(){$('#clock').textContent=new Date().toISOString().slice(11,19)}tick();setInterval(tick,1000);saveState();renderAll();runMonitor();
-</script></body></html>
+</script><script src="/command-center.js"></script></body></html>
