@@ -1,37 +1,5 @@
 // Fixed public websites only. Browser-supplied URLs are never fetched.
-const sites = [
-  {
-    "id": "buildersbench",
-    "name": "BuildersBench",
-    "url": "https://www.buildersbench.dev/",
-    "category": "Career projects",
-    "color": "#4bd6ff"
-  },
-  {
-    "id": "cob",
-    "name": "Opportunity Board",
-    "url": "https://cob-eta.vercel.app/",
-    "repository": "https://github.com/WynwoodDreams/COB",
-    "category": "Internships & jobs",
-    "color": "#b498ff"
-  },
-  {
-    "id": "arrestintelligence",
-    "name": "Arrest Intelligence",
-    "url": "https://www.arrestintelligence.com/",
-    "repository": "https://github.com/WynwoodDreams/miamiArrest-dashboard",
-    "category": "Public data dashboard",
-    "color": "#ffbd6b"
-  },
-  {
-    "id": "emriders",
-    "name": "EM Riders",
-    "url": "https://www.emriders.com/",
-    "repository": "https://github.com/WynwoodDreams/Emnova-Prjoect",
-    "category": "Motorcycle platform",
-    "color": "#4af3d1"
-  }
-];
+const sites = require("../../connections.js");
 async function checkSite(site) {
   const started = performance.now();
   const checkedAt = new Date().toISOString();

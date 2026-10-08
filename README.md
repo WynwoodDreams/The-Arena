@@ -5,8 +5,8 @@ Six stations: Chief (Christian's decisions), Scout (research), Flow (automations
 ## Current connections
 
 - Scout calls the existing server-side `/api/scout/run` n8n integration. `Started` means n8n accepted the request; final workflow results are not synchronized yet.
-- Monitor checks BuildersBench, Opportunity Board, Arrest Intelligence, and EM Riders automatically on opening and on refresh. These are homepage availability checks, not internal application, login, database, or GPS checks.
-- Flow, Pulse, and Forge are labeled **Not connected**. No simulated runs, costs, successes, or task counts are displayed.
+- Monitor checks BuildersBench, Opportunity Board, Arrest Intelligence, EM Riders, MDPD Dashboard, and Miami Environmental Intel automatically on opening and on refresh. These are homepage availability checks, not internal application, login, database, or GPS checks.
+- Flow and Pulse are labeled **Not connected**. Forge contains a linked project library; build progress is not connected. No simulated runs, costs, successes, or task counts are displayed.
 
 ## Chief inbox and history
 
@@ -29,3 +29,7 @@ A shared authenticated database and callback/status endpoints are needed for n8n
 The room opens with Chief's inbox closed. The pulsing **Chief inbox** button and Chief station open a modal side drawer with the existing decisions and history. Clicking another station's card, label, or robot opens its work columns. Monitor columns group healthy, issue, offline, and unknown results; other stations show recorded requests, reviews, and decision history. No work is fabricated for unconnected stations.
 
 CSS animates masked robot regions from the existing scene and station lights. Connected stations have ambient motion; running requests have faster motion; unconnected stations and failed connections are dim with slow motion. Scout's Started state still means accepted by n8n, not verified completion. Reduced-motion preferences disable animations.
+
+## Shared project registry
+
+Edit `connections.js` to add public website names, repository links, and live URLs once. Monitor's server endpoint and the browser use this same list; counts are derived from its length. Forge lists entries with repository links as project shortcuts, without claiming live build progress. Secrets and workflow webhooks must remain server-side.
