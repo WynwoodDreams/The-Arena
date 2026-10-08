@@ -16,3 +16,7 @@
 - Other agents and aggregate dashboard metrics remain demo values.
 - **Security**: The n8n webhook is not exposed in browser source. However, `/api/scout/run` is callable by anybody who can access your deployed site. Before sharing it publicly, enable access controls (for example, Vercel Deployment Protection / authentication) and use Header Auth in n8n. An unauthenticated public endpoint can trigger repeated paid Apify runs.
 - Very long n8n runs (over ~55s) can time out even if n8n continues processing. A background job/status approach is needed for longer workflows.
+
+## Website Monitor
+
+Select **Monitor > Check website** to check BuildersBench through `/api/monitor/run`. The server reports HTTP status, response time, and the check time. Checks are on demand; traffic analytics and scheduled uptime monitoring are not connected. A completed check can still report a website error. Add future public websites to the fixed `sites` list in `api/monitor/run.js`; the endpoint never accepts arbitrary URLs from the browser and does not follow redirects. Scout and the other agents retain their existing behavior.
