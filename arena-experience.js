@@ -95,6 +95,7 @@
   }
   let originButton=null;
   let sheetOpen=false;
+  let inspectorDelay=null;
   const isPhone=()=>phone.matches;
 
   function syncMobileState(){
@@ -114,6 +115,8 @@
     }
   }
   function closeSheet(restoreFocus=true){
+    // A second tap can cancel an inspector that has not opened yet.
+    if(inspectorDelay!==null){clearTimeout(inspectorDelay);inspectorDelay=null}
     if(!sheetOpen&&!document.body.classList.contains("mobile-sheet-open"))return;
     sheetOpen=false;
     syncMobileState();
@@ -123,6 +126,7 @@
     }
   }
   function openSheet(){
+    if(inspectorDelay!==null){clearTimeout(inspectorDelay);inspectorDelay=null}
     if(!isPhone()||!sheet)return;
     sheetOpen=true;
     sheet.scrollTop=0;
@@ -148,6 +152,7 @@
     if(clicked)originButton=clicked;
   },true);
   phone.addEventListener("change",()=>{
+    if(inspectorDelay!==null){clearTimeout(inspectorDelay);inspectorDelay=null}
     if(!isPhone())sheetOpen=false;
     syncMobileState();
     // Recreate full motion layers only when returning to a desktop-width view.
@@ -209,9 +214,11 @@
   }
   window.ArenaMobile={
     onAgentSelect(id){
-      // Single-tap Chief opens the same inspector as every other agent.
-      // Chief's inbox remains accessible from its explicit button.
-      openSheet();
+      // Hold the mobile inspector briefly so a second tap can open the full dossier.
+      // A single tap still updates the selected inspector immediately.
+      if(!isPhone())return;
+      if(inspectorDelay!==null)clearTimeout(inspectorDelay);
+      inspectorDelay=setTimeout(()=>{inspectorDelay=null;openSheet()},480);
     },
     close:closeSheet
   };
