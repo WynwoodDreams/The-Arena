@@ -12,6 +12,20 @@ The page holds no data. Everything is stored in a separate Supabase project and 
 - `../supabase/migrations/0001_arena_board.sql` creates all of it. The owner's email is added by hand afterwards and stays out of this repository.
 - The Supabase URL and publishable key go in the `SUPA` object near the top of the script in `index.html`. Both are public values. The database rules are what protect the data, so never put a secret or service role key in this file.
 
+## Public portfolio: what an interviewer sees
+
+`portfolio.json` in this folder is a read-only snapshot of the projects picked for presenting. It opens for anyone, with no sign-in and no local data, at:
+
+- `/board/?present` — the whole portfolio. Arrow keys move between projects, Escape closes one.
+- `/board/?present&p=<id>` — straight to one project. The Copy link button in a project's panel gives this address; the address bar also updates as you move.
+- `/board/` on a device that has no board of its own also shows the portfolio, so a borrowed laptop or a projector never shows an empty page. `/board/?edit` skips that and opens the editable board.
+
+To publish or update it: on your own board, mark projects **Show when presenting**, then **Backup → Download the public portfolio** and commit the file as `board/portfolio.json`. It carries names, one-liners, talking points, stage, tech stack and links only. To-dos, notes, people and file locations are never exported, and the page ignores them if they appear in the file.
+
+Thumbnails are plain images in `thumbs/<id>.jpg`. `npm run screenshots` captures one for each project from its first link (needs `npm install` once, which brings in Playwright). A project with no image shows no thumbnail.
+
+The six public websites from `../connections.js` are already in the file as a starting point. Each has an empty talking point and tech stack: fill those in on the board and export again, because empty sections are hidden in the public view.
+
 ## Current mode: device only, no sign-in
 
 `SUPA` is empty for now, so the page runs with no sign-in and no database. Everything is kept in the browser's own storage on that device, and nothing is sent anywhere. Each device has its own copy.

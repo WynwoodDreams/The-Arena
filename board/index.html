@@ -356,6 +356,11 @@ body.ro .w{display:none !important}
 
 /* ---------- show mode ---------- */
 body.showing .dock,body.showing .bar,body.showing .hide-show{display:none !important}
+body.portfolio .card.sc .card-in{pointer-events:none}
+body.portfolio .card.sc .card-in a{pointer-events:auto}
+body.portfolio .card.sc{cursor:pointer}
+.dnav{display:flex;gap:6px}
+.dnav button{min-width:44px}
 body.showing .band{top:env(safe-area-inset-top,0px)}
 body.showing main{padding-bottom:40px}
 
@@ -580,6 +585,9 @@ body.showing main{padding-bottom:40px}
     <button type="button" class="primary" id="dataSave">Download a backup</button>
     <button type="button" class="ghost" id="dataLoad">Restore from a backup file</button>
     <p class="datanote">Restoring replaces everything on this board with what is in the file.</p>
+    <hr>
+    <button type="button" class="ghost" id="dataPortfolio">Download the public portfolio</button>
+    <p class="datanote">Only projects marked Show when presenting, without to-dos, notes, people, or files. Commit it as <code>board/portfolio.json</code> and it opens for anyone at <code>/board/?present</code>.</p>
     <p class="err" id="dataErr" role="alert" hidden></p>
     <div class="sheet-actions"><button type="button" class="ghost" id="dataClose">Close</button></div>
   </div>
@@ -669,6 +677,11 @@ var LOCAL_KEY = "switchboard.v1", SHOW_KEY = "switchboard.show";
    row level security in the database is what keeps the data private. */
 var SUPA = {url: "", key: ""};
 var SUPA_LIB = "/board/vendor/supabase.js", SUPA_TABLE = "arena_items", SUPA_BUCKET = "arena-thumbs";
+/* Public portfolio: a read-only snapshot committed to the repo as board/portfolio.json.
+   It opens at /board/?present, and by default on a device that has no board of its own.
+   Thumbnails for it live in board/thumbs/<id>.jpg. */
+var PORTFOLIO_URL = "/board/portfolio.json", THUMB_PATH = /^thumbs\/[A-Za-z0-9_.-]+\.(png|jpe?g|webp)$/;
+var QS = new URLSearchParams(location.search), WANT_PORTFOLIO = QS.has("present"), WANT_EDIT = QS.has("edit"), DEEP_ID = QS.get("p") || "";
 var sb = null, gateMode = "in", gateBusy = false, signedInAs = null, thumbUrls = {}, wrote = {}, syncOn = false;
 var ICON_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3H3v10h10v-3M9 3h4v4M13 3L7.5 8.5"/></svg>';
 
@@ -728,7 +741,7 @@ function norm(id, d){
     kind: kindOf(d.kind),
     runs: str(d.runs),
     pitch: str(d.pitch),
-    thumb: /^[A-Za-z0-9_-]{16,64}$/.test(d.thumb || "") ? d.thumb : "",
+    thumb: /^[A-Za-z0-9_-]{16,64}$/.test(d.thumb || "") || THUMB_PATH.test(d.thumb || "") ? d.thumb : "",
     health: normHealth(d.health),
     show: !!d.show,
     stage: STAGE_LABEL[d.stage] ? d.stage : "starting",
@@ -797,6 +810,7 @@ function onSnap(snap){
 }
 function boot(){
   var c = window.claude;
+  if(WANT_PORTFOLIO && !WANT_EDIT) return startPortfolio(true);
   if(!c || typeof c.use !== "function"){
     if(SUPA.url && SUPA.key) return loadSupa();
     /* No database configured: the board runs on this device only, with no sign-in. */
@@ -811,7 +825,60 @@ function boot(){
     if(user && user.can){ user.can("data.write").then(function(ok){ if(ok === false) document.body.classList.add("ro"); }, function(){}); }
   }, startLocal);
 }
-function startLocal(){ state.mode = "local"; loadLocal(); state.ready = true; render(); }
+function startLocal(){
+  loadLocal();
+  /* A device with no board of its own shows the public portfolio instead of an empty page. ?edit skips that. */
+  if(!state.projects.size && !WANT_EDIT) return startPortfolio(false);
+  state.mode = "local"; state.ready = true; render(); openDeep();
+}
+function portfolioItems(j){
+  var items = j && j.app === "my-arena-portfolio" && j.items && typeof j.items === "object" && !Array.isArray(j.items) ? j.items : null;
+  if(!items) return null;
+  var ids = Object.keys(items).filter(function(id){ return /^[A-Za-z0-9_.~:@+-]{1,200}$/.test(id) && items[id] && typeof items[id] === "object" && !Array.isArray(items[id]); });
+  return ids.length ? {ids:ids, items:items, meta:j.meta && typeof j.meta === "object" ? j.meta : null} : null;
+}
+function startPortfolio(forced){
+  var fallback = function(){
+    if(forced){ state.mode = "portfolio"; state.show = true; state.ready = true; render(); }
+    else { state.mode = "local"; state.ready = true; render(); }
+  };
+  fetch(PORTFOLIO_URL, {cache:"no-store"}).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+    var got = portfolioItems(j);
+    if(!got) return fallback();
+    state.mode = "portfolio"; state.show = true;
+    state.projects = new Map();
+    got.ids.forEach(function(id){
+      var d = got.items[id];
+      /* Private fields never come from the portfolio file, whatever it contains. */
+      var pub = {name:d.name, blurb:d.blurb, kind:d.kind, runs:d.runs, pitch:d.pitch, stage:d.stage, tech:d.tech, stack:d.stack, links:d.links,
+        thumb: THUMB_PATH.test(d.thumb || "") ? d.thumb : "thumbs/" + id + ".jpg", show:true, order:d.order};
+      if(pub.kind === "task" || pub.kind === "inbox" || pub.kind === "meta") return;
+      state.projects.set(id, norm(id, pub));
+    });
+    if(got.meta) state.projects.set("meta", norm("meta", {kind:"meta", name:str(got.meta.name), blurb:str(got.meta.intro)}));
+    state.ready = true; render(); openDeep();
+  }).catch(fallback);
+}
+/* The public file: only what is picked for presenting, and none of the private fields. */
+function portfolioObj(){
+  var items = {};
+  sorted(all()).forEach(function(p){
+    if(!p.show || p.stage === "shelf" || p.kind === "task") return;
+    items[p.id] = {name:p.name, blurb:p.blurb, kind:p.kind, runs:p.runs, pitch:p.pitch, stage:p.stage, tech:p.tech, links:p.links,
+      thumb: THUMB_PATH.test(p.thumb) ? p.thumb : "", order:p.order};
+  });
+  var m = state.projects.get("meta");
+  return {app:"my-arena-portfolio", version:1, exported:new Date().toISOString(), meta:{name: m && m.name !== "Untitled" ? m.name : "", intro: m ? m.blurb : ""}, items:items};
+}
+function downloadPortfolio(){
+  var n = Object.keys(portfolioObj().items).length;
+  if(!n){ toast("Nothing is picked for presenting yet"); return; }
+  var blob = new Blob([JSON.stringify(portfolioObj(), null, 1)], {type:"application/json"}), a = document.createElement("a"), href = URL.createObjectURL(blob);
+  a.href = href; a.download = "portfolio.json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(href); }, 4000);
+  toast("Portfolio downloaded: " + n + (n === 1 ? " project" : " projects"));
+}
 
 /* ---------- derived ---------- */
 function all(){ return Array.from(state.projects.values()).filter(function(p){ return p.kind !== "inbox" && p.kind !== "meta"; }); }
@@ -848,7 +915,12 @@ function matches(p){
 function totalTodo(list){ return list.reduce(function(n, p){ return n + openCount(p); }, 0) + inboxItems().length; }
 
 /* ---------- pieces ---------- */
-function thumbSrc(id){ return state.mode === "supa" ? ((thumbUrls[id] && thumbUrls[id].u) || "") : "/_blob/" + id; }
+function thumbSrc(id){
+  if(THUMB_PATH.test(id)) return "/board/" + id;
+  if(state.mode === "portfolio") return "";
+  return state.mode === "supa" ? ((thumbUrls[id] && thumbUrls[id].u) || "") : "/_blob/" + id;
+}
+function isPortfolio(){ return state.mode === "portfolio"; }
 function thumbImg(p, cls){
   var src = p.thumb ? thumbSrc(p.thumb) : "";
   return src ? '<img class="' + cls + '" src="' + esc(src) + '" alt="' + (cls === "dthumb" ? 'Screenshot of ' + esc(p.name) : '') + '" loading="lazy" decoding="async">' : '';
@@ -873,7 +945,7 @@ function cardHtml(p, show){
   var who = p.people.length ? "With " + p.people.slice(0,2).join(", ") + (p.people.length > 2 ? " +" + (p.people.length - 2) : "") : "";
   var h = '<div class="cell"><article class="card z-' + z + ' th-' + THERM[p.stage] + (show ? ' sc' : '') + '" data-id="' + esc(p.id) + '">' +
     '<span class="fx-halo" aria-hidden="true"><i></i></span><div class="mat" aria-hidden="true"></div>' +
-    (show ? '' : '<button type="button" class="card-hit" data-act="open" data-id="' + esc(p.id) + '" data-fk="card-' + esc(p.id) + '" aria-label="Details for ' + esc(p.name) + '"></button>') +
+    (show && !isPortfolio() ? '' : '<button type="button" class="card-hit" data-act="open" data-id="' + esc(p.id) + '" data-fk="card-' + esc(p.id) + '" aria-label="Details for ' + esc(p.name) + '"></button>') +
     '<div class="card-in">' + thumbImg(p, "thumb") +
       '<div class="ctop"><span class="kchip">' + KIND_ONE[p.kind] + '</span><span class="tword">' + STAGE_LABEL[p.stage] + '</span>' + (p.flag && !show ? '<span class="fchip">Analyze</span>' : '') + '</div>' +
       '<h3 class="cname">' + esc(p.name) + '</h3>' +
@@ -946,17 +1018,17 @@ function renderBoard(list){
 }
 function renderShow(list){
   var picked = list.filter(function(p){ return p.show && p.stage !== "shelf" && p.kind !== "task"; });
-  if(!picked.length) return '<div class="wrap"><p class="zone-empty">Nothing picked yet. Tap Choose to pick what you want people to see. Your to-dos, notes, and the shelf stay hidden here.</p></div>';
+  if(!picked.length) return '<div class="wrap"><p class="zone-empty">' + (isPortfolio() ? 'Nothing published yet. Download a portfolio file from the board and commit it as board/portfolio.json.' : 'Nothing picked yet. Tap Choose to pick what you want people to see. Your to-dos, notes, and the shelf stay hidden here.') + '</p></div>';
   return KINDS.filter(function(k){ return k.id !== "task"; }).map(function(k){
     var items = sorted(picked.filter(function(p){ return zoneOf(p) === k.id; }));
     return items.length ? zoneHtml(k, items.length, '<div class="masonry">' + items.map(function(p){ return cardHtml(p, true); }).join("") + '</div>') : "";
   }).join("");
 }
 /* ---------- drawer ---------- */
-function stackRows(p){
+function stackRows(p, onlySet){
   return '<div class="srows">' + TECH.map(function(c){
     var v = p.tech[c.id];
-    if(!v.length && (c.id === "ui" || c.id === "tools")) return "";
+    if(!v.length && (onlySet || c.id === "ui" || c.id === "tools")) return "";
     return '<div class="srow"><span class="stag sp-' + c.id + '">' + c.tag + '</span>' +
       (v.length ? '<span class="svals">' + v.map(function(x){ return '<span class="sv">' + esc(x) + '</span>'; }).join("") + '</span>' : '<span class="unset">Not set</span>') + '</div>';
   }).join("") + '</div>';
@@ -1000,8 +1072,21 @@ function drawerHtml(p){
     }
     h += '</div>';
   }
+  var linksHtml = '<div class="links">' + p.links.map(function(l){ return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + ICON_OUT + '</a>'; }).join("") + '</div>';
+  if(isPortfolio()){
+    /* Public view: only what is filled in, no placeholders. */
+    if(p.pitch) h += '<div class="dsec"><h3>Talking point</h3><p class="pitch">' + esc(p.pitch) + '</p></div>';
+    if(p.links.length) h += '<div class="dsec"><h3>Links</h3>' + linksHtml + '</div>';
+    if(flat(p.tech).length) h += '<div class="dsec"><h3>Tech stack</h3>' + stackRows(p, true) + '</div>';
+    var ring = showList(), at = ring.indexOf(p.id);
+    h += '<div class="dfoot"><div class="dnav">' +
+      '<button type="button" class="ghost" data-act="prevproj" data-fk="prevproj" aria-label="Previous project"' + (at > 0 ? '' : ' disabled') + '>&larr;</button>' +
+      '<button type="button" class="ghost" data-act="nextproj" data-fk="nextproj" aria-label="Next project"' + (at > -1 && at < ring.length - 1 ? '' : ' disabled') + '>&rarr;</button></div>' +
+      '<button type="button" class="ghost" data-act="copylink" data-id="' + id + '" data-fk="copylink">Copy link</button></div>';
+    return h + '</div></div>';
+  }
   h += '<div class="dsec"><h3>Talking point</h3>' + (p.pitch ? '<p class="pitch">' + esc(p.pitch) + '</p>' : '<p class="unset">Not set yet</p>') + '</div>';
-  h += '<div class="dsec"><h3>Links</h3>' + (p.links.length ? '<div class="links">' + p.links.map(function(l){ return '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.label) + ICON_OUT + '</a>'; }).join("") + '</div>' : '<p class="unset">No links yet</p>') + '</div>';
+  h += '<div class="dsec"><h3>Links</h3>' + (p.links.length ? linksHtml : '<p class="unset">No links yet</p>') + '</div>';
   h += '<div class="dsec"><h3>Tech stack</h3>' + stackRows(p) + '</div>';
   var fUrl = /^https?:\/\//i.test(p.files) && !/\s/.test(p.files) ? safeUrl(p.files) : "";
   h += '<div class="dsec"><h3>Files</h3>' + (p.files ? '<p class="files">' + (fUrl ? '<a href="' + esc(fUrl) + '" target="_blank" rel="noopener">' + esc(p.files) + '</a>' : esc(p.files)) + '</p>' : '<p class="unset">Not set yet</p>') + '</div>';
@@ -1011,6 +1096,7 @@ function drawerHtml(p){
     (done ? '<button type="button" class="textbtn w" data-act="cleardone" data-id="' + id + '">Clear ' + done + ' done</button>' : '') + '</div>';
   if(p.notes) h += '<div class="dsec"><h3>Notes</h3><p class="notes">' + esc(p.notes) + '</p></div>';
   h += '<div class="dfoot"><button type="button" class="ghost w" data-act="edit" data-id="' + id + '" data-fk="edit">Edit details</button>' +
+    (p.show ? '<button type="button" class="ghost" data-act="copylink" data-id="' + id + '" data-fk="copylink">Copy link</button>' : '') +
     (p.updated ? '<span class="stamp">Updated ' + new Date(p.updated).toLocaleDateString(undefined, {month:"short", day:"numeric"}) + '</span>' : '') + '</div>';
   return h + '</div></div>';
 }
@@ -1032,10 +1118,40 @@ function renderDrawer(){
 function openDrawer(id){
   if(!state.projects.get(id)) return;
   closeMenu(false);
-  state.openId = id; renderDrawer(); openDlg(drawer);
+  state.openId = id; renderDrawer(); openDlg(drawer); syncUrl();
   var c = drawer.querySelector(".dclose"); if(c) c.focus({preventScroll:true});
 }
-drawer.addEventListener("close", function(){ state.openId = null; });
+drawer.addEventListener("close", function(){ state.openId = null; syncUrl(); });
+/* Projects visible in the presentation, in the order they appear on the page. */
+function showList(){
+  var out = [];
+  KINDS.filter(function(k){ return k.id !== "task"; }).forEach(function(k){
+    sorted(all().filter(function(p){ return p.show && p.stage !== "shelf" && p.kind !== "task" && zoneOf(p) === k.id; })).forEach(function(p){ out.push(p.id); });
+  });
+  return out;
+}
+function stepProject(dir){
+  if(!isPortfolio() || !state.openId) return;
+  var ring = showList(), at = ring.indexOf(state.openId), to = ring[at + dir];
+  if(at < 0 || !to) return;
+  state.openId = to; renderDrawer(); syncUrl();
+  var sc = drawer.querySelector(".dscroll"); if(sc) sc.scrollTop = 0;
+}
+function projectLink(id){ return location.origin + location.pathname + "?present&p=" + encodeURIComponent(id); }
+/* Keep ?p= in the address bar in step with the open project so the URL can be copied as is. */
+function syncUrl(){
+  if(!isPortfolio() || !history.replaceState) return;
+  var q = new URLSearchParams(location.search);
+  if(state.openId) q.set("p", state.openId); else q.delete("p");
+  q.set("present", "");
+  var s = q.toString().replace(/present=(&|$)/, "present$1");
+  try{ history.replaceState(null, "", location.pathname + (s ? "?" + s : "") + location.hash); }catch(e){}
+}
+function copyLink(id){
+  var url = projectLink(id), done = function(){ toast("Link copied"); }, fail = function(){ window.prompt("Copy this link", url); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, fail); else fail();
+}
+function openDeep(){ if(DEEP_ID && state.projects.get(DEEP_ID) && (!isPortfolio() || showList().indexOf(DEEP_ID) > -1)) openDrawer(DEEP_ID); DEEP_ID = ""; }
 drawer.addEventListener("click", function(e){ if(e.target === drawer) closeDlg(drawer); });
 
 /* ---------- render ---------- */
@@ -1050,10 +1166,13 @@ function render(){
 
   var todo = totalTodo(list);
   document.body.classList.toggle("showing", !!state.show);
+  document.body.classList.toggle("portfolio", isPortfolio());
+  if(isPortfolio()) document.body.classList.add("ro");
   $("showBtn").textContent = state.show ? "Exit" : "Present";
   $("showBtn").setAttribute("aria-pressed", String(!!state.show));
-  $("pickBtn").hidden = !state.show;
-  $("dataBtn").hidden = state.mode === "db";
+  $("showBtn").hidden = isPortfolio();
+  $("pickBtn").hidden = !state.show || isPortfolio();
+  $("dataBtn").hidden = state.mode === "db" || isPortfolio();
   var m = state.projects.get("meta"), who = m && m.name !== "Untitled" ? m.name : "", say = m ? m.blurb : "";
   $("byline").textContent = who; $("byline").hidden = !who;
   $("intro").textContent = say; $("intro").hidden = !say;
@@ -1177,6 +1296,17 @@ zmenu.addEventListener("keydown", function(e){
   else if(e.key === "Tab"){ closeMenu(false); }
 });
 document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !zmenu.hidden) closeMenu(true); });
+/* Presenting: arrow keys move between projects, Enter opens the first one. */
+document.addEventListener("keydown", function(e){
+  if(!isPortfolio() || e.altKey || e.ctrlKey || e.metaKey) return;
+  var t = e.target, typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT");
+  if(typing) return;
+  if(e.key === "ArrowRight" || e.key === "ArrowLeft"){
+    var ring = showList(); if(!ring.length) return;
+    e.preventDefault();
+    if(state.openId) stepProject(e.key === "ArrowRight" ? 1 : -1); else openDrawer(e.key === "ArrowRight" ? ring[0] : ring[ring.length - 1]);
+  }
+});
 document.addEventListener("pointerdown", function(e){
   if(zmenu.hidden) return;
   var t = e.target;
@@ -1305,6 +1435,10 @@ function act(el){
   var a = el.dataset.act, id = el.dataset.id, p = id ? state.projects.get(id) : null;
   if(a === "open"){ openDrawer(id); return; }
   if(a === "closedrawer"){ closeDlg(drawer); return; }
+  if(a === "copylink"){ if(p) copyLink(id); return; }
+  if(a === "prevproj"){ stepProject(-1); return; }
+  if(a === "nextproj"){ stepProject(1); return; }
+  if(isPortfolio()) return;
   if(a === "add"){ openCap(); return; }
   if(a === "restore"){ $("dataFile").click(); return; }
   if(a === "edit"){ openSheet(id); return; }
@@ -1373,6 +1507,7 @@ $("searchBtn").addEventListener("click", function(){
 });
 $("addBtn").addEventListener("click", function(){ openCap(); });
 $("showBtn").addEventListener("click", function(){
+  if(isPortfolio()) return;
   state.show = !state.show; try{ localStorage.setItem(SHOW_KEY, state.show ? "1" : "0"); }catch(e){}
   render(); setDockVar(); window.scrollTo({top:0});
 });
@@ -1423,7 +1558,11 @@ $("thumbFile").addEventListener("change", function(){
     if(old && old !== r.id) assets.delete(old).catch(function(){});
   }).catch(function(e){ uploading = null; render(); toast(assetMsg(e)); });
 });
-document.addEventListener("error", function(e){ var t = e.target; if(t && t.tagName === "IMG" && (t.classList.contains("thumb") || t.classList.contains("dthumb"))) t.hidden = true; }, true);
+document.addEventListener("error", function(e){
+  var t = e.target; if(!t || t.tagName !== "IMG" || !(t.classList.contains("thumb") || t.classList.contains("dthumb"))) return;
+  t.hidden = true;
+  if(isPortfolio() && t.classList.contains("dthumb")){ var sec = t.closest(".dsec"); if(sec) sec.hidden = true; }
+}, true);
 
 /* ---------- quick note ---------- */
 var cap = $("cap"), pick = $("pick"), sheet = $("sheet");
@@ -1656,6 +1795,7 @@ $("dataBtn").addEventListener("click", function(){
   openDlg(dataDlg);
 });
 $("dataSave").addEventListener("click", function(){ dataMsg(""); downloadBackup(); });
+$("dataPortfolio").addEventListener("click", function(){ dataMsg(""); downloadPortfolio(); });
 $("dataLoad").addEventListener("click", function(){
   dataMsg("");
   if(all().length && !restoreArmed){
@@ -1814,7 +1954,7 @@ function enterBoard(){
     return col.pull().then(function(){
       $("outBtn").hidden = false;
       if(gateMode !== "reset") hideGate();
-      startSync();
+      startSync(); openDeep();
     });
   }).catch(function(){
     signedInAs = null;

@@ -18,7 +18,25 @@ Run history (latest 100), activity (latest 30), decisions (latest 200), and late
 
 Serve `index.html` and the `api/` serverless endpoints. Set `N8N_SCOUT_WEBHOOK_URL` to the published n8n production webhook; optional Header Auth uses `N8N_SCOUT_AUTH_HEADER_NAME` and `N8N_SCOUT_AUTH_HEADER_VALUE`. Redeploy after environment changes. The webhook URL stays server-side.
 
-Opening the dashboard only runs the read-only website check. Scout and Grant Radar require their Run buttons. Public Scout endpoint access still requires appropriate access controls before sharing broadly because it can start paid workflows.
+Opening the dashboard only runs the read-only website check. Scout and Grant Radar require their Run buttons.
+
+## Endpoint protection
+
+All three endpoints (`lib/guard.js`) accept POST only from the Arena page itself: the request's `Origin` must match the site host, so other sites and plain command-line calls get 403. Monitor results are also reused for two minutes per server instance, so repeated page opens do not re-check every site.
+
+Scout and Grant Radar can start paid work, so they take one more step. Set `ARENA_ACCESS_KEY` on Vercel to any long random string. The first time a station is run, the page asks for that key once and keeps it in that browser. Without the variable, only the origin check applies. `vercel.json` also sets security headers (Content Security Policy, no framing, no sniffing).
+
+## Checks
+
+```
+npm test
+```
+
+runs the endpoint tests with a mocked n8n and a mocked web, so nothing is called for real.
+
+## Portfolio board
+
+`/board` is a separate, public-facing project board for interviews and presentations. See `board/README.md`.
 
 ## Next integration layer
 
@@ -33,6 +51,15 @@ CSS animates masked robot regions from the existing scene and station lights. Co
 ## Shared project registry
 
 Edit `connections.js` to add public website names, repository links, and live URLs once. Monitor's server endpoint and the browser use this same list; counts are derived from its length. Forge lists entries with repository links as project shortcuts, without claiming live build progress. Secrets and workflow webhooks must remain server-side.
+
+## Workflows
+
+`workflows.js` is the shared registry of n8n workflows, used by the Flow station and the `/api/flow/run` endpoint. Three are registered:
+
+- **Grant Radar** and **Agent Ideas** start from Flow. Each has a Webhook trigger in n8n (POST, Respond Immediately) at `/webhook/agent-arena-grant-radar` and `/webhook/agent-arena-agent-ideas` on the same n8n host as Scout, so no extra variable is needed. `N8N_AGENT_IDEAS_WEBHOOK_URL` and the matching `_AUTH_HEADER_NAME` / `_AUTH_HEADER_VALUE` variables override that, as the Grant Radar ones do.
+- **AI Jobs Monitor** (Indeed v3 with Slack summaries) is what the Scout station runs through `N8N_SCOUT_WEBHOOK_URL`. Flow lists it and points to Scout.
+
+To add a workflow: give it a Webhook trigger in n8n, add an entry with its path to `workflows.js`, and it appears in Flow with its own Run button. Hosts and credentials never go in that file.
 
 ## Grant Radar connection
 
