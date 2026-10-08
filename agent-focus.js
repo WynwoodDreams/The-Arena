@@ -140,13 +140,14 @@
    const control=event.target.closest("[data-focus-action]");
    if(!control||control.disabled)return;
    const action=control.dataset.focusAction;
-   if(action==="inbox"){dialog.close();openInbox();return}
+   if(action==="inbox"){dialog.close();window.ArenaMobile?.close(false);openInbox();return}
    if(action==="columns"){
      const id=current;
      selected=id;
      columnsOpen=true;
      renderCards();renderDetails();renderColumns();
      dialog.close();
+     window.ArenaMobile?.close(false);
      document.querySelector("#agent-columns")?.scrollIntoView({behavior:"smooth",block:"start"});
      return;
    }
