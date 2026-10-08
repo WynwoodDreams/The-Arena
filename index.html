@@ -126,7 +126,7 @@ function renderCards(){
  $('#hotspots').innerHTML=agents.map(a=>'<button class="hotspot '+stationMode(a)+' '+(a.id===selected?'selected':'')+'" data-agent="'+a.id+'" style="--agent:'+a.color+';left:'+a.x+'%;top:'+a.y+'%" aria-label="Inspect '+a.name+'" aria-pressed="'+(a.id===selected)+'">'+a.name.toUpperCase()+'</button>').join('');
  const coords={scout:[29.5,37],pulse:[50,37],flow:[71,37],forge:[24.5,57],monitor:[50,57],chief:[74,57]};
  const src=$('.scene>img').getAttribute('src');
- $('#robot-layers').innerHTML=agents.map((a,i)=>{const c=coords[a.id];return '<div class="robot-station '+stationMode(a)+'" style="--agent:'+a.color+';--cx:'+c[0]+'%;--cy:'+c[1]+'%;--delay:-'+i*.7+'s"><div class="station-dimmer"></div><img class="robot-motion" src="'+src+'" alt="" aria-hidden="true"><span class="robot-glow"></span><button class="robot-target" data-agent="'+a.id+'" aria-label="Open '+a.name+' work columns"></button></div>'}).join('');
+ $('#robot-layers').innerHTML=window.matchMedia('(max-width:810px)').matches?'':agents.map((a,i)=>{const c=coords[a.id];return '<div class="robot-station '+stationMode(a)+'" style="--agent:'+a.color+';--cx:'+c[0]+'%;--cy:'+c[1]+'%;--delay:-'+i*.7+'s"><div class="station-dimmer"></div><img class="robot-motion" src="'+src+'" alt="" aria-hidden="true"><span class="robot-glow"></span><button class="robot-target" data-agent="'+a.id+'" aria-label="Open '+a.name+' work columns"></button></div>'}).join('');
  document.querySelectorAll('[data-agent]').forEach(b=>b.onclick=()=>select(b.dataset.agent));
 }
 function renderColumns(){
