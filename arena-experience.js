@@ -150,6 +150,8 @@
   phone.addEventListener("change",()=>{
     if(!isPhone())sheetOpen=false;
     syncMobileState();
+    // Recreate full motion layers only when returning to a desktop-width view.
+    if(typeof renderCards==="function")renderCards();
   });
   let initialTouch=null;
   sheet?.querySelector(".panel-top")?.addEventListener("touchstart",event=>{
