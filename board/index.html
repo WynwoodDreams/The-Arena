@@ -114,6 +114,12 @@ h1{margin:0;font-family:var(--display);font-weight:900;font-stretch:122%;text-tr
 .gatelinks{display:flex;flex-wrap:wrap;justify-content:space-between;gap:0 16px}
 body.gated .top-actions,body.gated .introblock,body.gated #tiles,body.gated .dock,body.gated main,body.gated .bar{display:none !important}
 body.gated .sky{--skyB:0px}
+.datahint{margin:-6px 0 0;color:var(--dim);font-size:.95rem}
+.datanote{margin:-4px 0 0;color:var(--faint);font-size:.84rem}
+.firstrun{display:grid;gap:12px;justify-items:start;margin:18px 0 4px;padding:18px 16px;border:1.5px solid var(--line2);border-top:4px solid var(--ink);border-radius:14px;background:rgba(13,13,20,.9)}
+.firstrun p{margin:0;color:var(--dim);max-width:52ch}
+.firstrun b{color:var(--ink)}
+.firstrun .btn{background:var(--ink);color:var(--base)}
 .heat{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding-bottom:16px}
 .ht{position:relative;isolation:isolate;display:grid;align-content:center;justify-items:start;min-height:74px;padding:10px 12px;border:0;border-radius:14px;background:transparent;color:var(--ink);text-align:left;min-width:0}
 .ht > .mat{z-index:-1}
@@ -434,6 +440,7 @@ body.showing main{padding-bottom:40px}
   <p class="intro" id="intro" hidden></p>
   <div class="introlinks hide-show">
     <button type="button" class="textbtn w" id="introEdit">Add an intro</button>
+    <button type="button" class="textbtn" id="dataBtn" hidden>Backup</button>
     <button type="button" class="textbtn" id="outBtn" hidden>Sign out</button>
   </div>
 </div>
@@ -566,6 +573,19 @@ body.showing main{padding-bottom:40px}
   </div>
 </dialog>
 
+<dialog id="dataDlg" class="sheet-d" aria-labelledby="dataTitle">
+  <div class="sheet">
+    <h2 id="dataTitle">Backup</h2>
+    <p class="datahint" id="dataHint"></p>
+    <button type="button" class="primary" id="dataSave">Download a backup</button>
+    <button type="button" class="ghost" id="dataLoad">Restore from a backup file</button>
+    <p class="datanote">Restoring replaces everything on this board with what is in the file.</p>
+    <p class="err" id="dataErr" role="alert" hidden></p>
+    <div class="sheet-actions"><button type="button" class="ghost" id="dataClose">Close</button></div>
+  </div>
+</dialog>
+
+<input type="file" id="dataFile" accept="application/json,.json" hidden>
 <input type="file" id="thumbFile" accept="image/*" hidden>
 <div id="toast" role="status" aria-live="polite"></div>
 
@@ -779,13 +799,7 @@ function boot(){
   var c = window.claude;
   if(!c || typeof c.use !== "function"){
     if(SUPA.url && SUPA.key) return loadSupa();
-    if(/^https?:$/.test(location.protocol) && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)){
-      /* hosted, but no database configured: never fall back to an unprotected local board */
-      state.mode = "supa";
-      showGate("in", "err", "This board is not connected to its database yet.");
-      $("gateGo").disabled = true; $("gateLinks").hidden = true;
-      return;
-    }
+    /* No database configured: the board runs on this device only, with no sign-in. */
     return startLocal();
   }
   Promise.all([c.use("db"), c.use("user"), c.use("assets")]).then(function(r){
@@ -909,6 +923,8 @@ function zoneHtml(k, count, inner, f){
 }
 function renderBoard(list){
   var html = "";
+  if(state.mode === "local" && !list.length && !inboxItems().length)
+    html += '<div class="wrap"><div class="firstrun"><p><b>This device has no board yet.</b> Load your backup file to bring your projects in. Everything stays on this device.</p><button type="button" class="btn w" data-act="restore">Load a backup file</button></div></div>';
   KINDS.forEach(function(k){
     var f = state.zf[k.id], zl = list.filter(function(p){ return zoneOf(p) === k.id; });
     var items = sorted(zl.filter(matches).filter(function(p){ return inFilter(p, f); })), inner = "", count = items.length;
@@ -925,7 +941,7 @@ function renderBoard(list){
     if(f === "all" && !state.q && shelved) inner += '<button type="button" class="ghost zshelf" data-zone-filter="' + k.id + '" data-f="shelf">Show ' + shelved + ' on the shelf</button>';
     html += zoneHtml(k, count, inner, f);
   });
-  if(state.mode === "local") html += '<div class="wrap"><p class="note">Saved on this device only. Open it inside Claude to sync across devices.</p></div>';
+  if(state.mode === "local") html += '<div class="wrap"><p class="note">Saved on this device only. Download a backup now and then, because clearing this browser erases it.</p></div>';
   return html;
 }
 function renderShow(list){
@@ -1037,6 +1053,7 @@ function render(){
   $("showBtn").textContent = state.show ? "Exit" : "Present";
   $("showBtn").setAttribute("aria-pressed", String(!!state.show));
   $("pickBtn").hidden = !state.show;
+  $("dataBtn").hidden = state.mode === "db";
   var m = state.projects.get("meta"), who = m && m.name !== "Untitled" ? m.name : "", say = m ? m.blurb : "";
   $("byline").textContent = who; $("byline").hidden = !who;
   $("intro").textContent = say; $("intro").hidden = !say;
@@ -1289,6 +1306,7 @@ function act(el){
   if(a === "open"){ openDrawer(id); return; }
   if(a === "closedrawer"){ closeDlg(drawer); return; }
   if(a === "add"){ openCap(); return; }
+  if(a === "restore"){ $("dataFile").click(); return; }
   if(a === "edit"){ openSheet(id); return; }
   if(a === "clearsearch"){ state.q = ""; $("search").value = ""; $("searchRow").hidden = true; document.body.classList.remove("searching"); $("searchBtn").setAttribute("aria-expanded", "false"); setDockVar(); render(); return; }
   if(a === "quickadd"){
@@ -1594,6 +1612,77 @@ $("delBtn").addEventListener("click", function(){
   }
   plan(2600);
 })();
+
+/* ---------- backup and restore ---------- */
+var dataDlg = $("dataDlg"), restoreArmed = 0;
+var NOT_BACKUP = "That file is not a backup from this board. Pick a file this board downloaded.";
+function backupObj(){
+  var items = {};
+  state.projects.forEach(function(p, id){ items[id] = body(p); });
+  return {app:"my-arena", version:1, exported:new Date().toISOString(), items:items};
+}
+function downloadBackup(){
+  var d = new Date(), two = function(n){ return (n < 10 ? "0" : "") + n; };
+  var blob = new Blob([JSON.stringify(backupObj(), null, 1)], {type:"application/json"}), a = document.createElement("a"), href = URL.createObjectURL(blob);
+  a.href = href; a.download = "my-arena-backup-" + d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate()) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(href); }, 4000);
+  toast("Backup downloaded");
+}
+function restoreFrom(text){
+  var j;
+  try{ j = JSON.parse(text); }catch(e){ throw new Error(NOT_BACKUP); }
+  var items = j && j.app === "my-arena" && j.items && typeof j.items === "object" && !Array.isArray(j.items) ? j.items : null;
+  if(!items) throw new Error(NOT_BACKUP);
+  var ids = Object.keys(items).filter(function(id){ return /^[A-Za-z0-9_.~:@+-]{1,200}$/.test(id) && items[id] && typeof items[id] === "object" && !Array.isArray(items[id]); });
+  if(!ids.length) throw new Error("That backup has nothing in it.");
+  var gone = [];
+  state.projects.forEach(function(p, id){ if(ids.indexOf(id) < 0) gone.push(id); });
+  ids.forEach(function(id){ state.projects.set(id, norm(id, items[id])); });
+  gone.forEach(function(id){ state.projects.delete(id); });
+  state.openId = null;
+  if(state.mode === "local"){ persistLocal(); render(); }
+  else {
+    render();
+    ids.concat(gone).forEach(function(id){ var w = writes[id] || (writes[id] = {busy:false, dirty:false}); w.dirty = true; pump(id); });
+  }
+  return ids.filter(function(id){ var k = state.projects.get(id).kind; return k !== "meta" && k !== "inbox"; }).length;
+}
+function dataMsg(msg){ $("dataErr").hidden = !msg; $("dataErr").textContent = msg || ""; }
+function disarmRestore(){ clearTimeout(restoreArmed); restoreArmed = 0; $("dataLoad").textContent = "Restore from a backup file"; }
+$("dataBtn").addEventListener("click", function(){
+  closeMenu(false); dataMsg(""); disarmRestore();
+  $("dataHint").textContent = state.mode === "local" ? "This board is saved on this device only. A backup file lets you move it to another device or get it back." : "A backup file is a copy of everything on this board.";
+  openDlg(dataDlg);
+});
+$("dataSave").addEventListener("click", function(){ dataMsg(""); downloadBackup(); });
+$("dataLoad").addEventListener("click", function(){
+  dataMsg("");
+  if(all().length && !restoreArmed){
+    $("dataLoad").textContent = "Tap again to replace this board";
+    restoreArmed = setTimeout(disarmRestore, 3500);
+    return;
+  }
+  disarmRestore(); $("dataFile").click();
+});
+$("dataClose").addEventListener("click", function(){ closeDlg(dataDlg); });
+dataDlg.addEventListener("click", function(e){ if(e.target === dataDlg) closeDlg(dataDlg); });
+$("dataFile").addEventListener("change", function(){
+  var file = this.files && this.files[0]; this.value = "";
+  if(!file) return;
+  var fail = function(msg){ if(dataDlg.open) dataMsg(msg); else toast(msg); };
+  if(file.size > 8388608){ fail("That file is too large to be a backup."); return; }
+  var fr = new FileReader();
+  fr.onerror = function(){ fail("That file could not be read. Try again."); };
+  fr.onload = function(){
+    try{
+      var n = restoreFrom(String(fr.result || ""));
+      if(dataDlg.open) closeDlg(dataDlg);
+      toast("Restored " + n + (n === 1 ? " item" : " items"));
+    }catch(e){ fail(e && e.message ? e.message : NOT_BACKUP); }
+  };
+  fr.readAsText(file);
+});
 
 /* ---------- hosted mode: Supabase sign-in, storage and thumbnails ---------- */
 function longId(){

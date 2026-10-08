@@ -12,7 +12,13 @@ The page holds no data. Everything is stored in a separate Supabase project and 
 - `../supabase/migrations/0001_arena_board.sql` creates all of it. The owner's email is added by hand afterwards and stays out of this repository.
 - The Supabase URL and publishable key go in the `SUPA` object near the top of the script in `index.html`. Both are public values. The database rules are what protect the data, so never put a secret or service role key in this file.
 
-Until `SUPA` is filled in, the hosted page shows "This board is not connected to its database yet" and loads nothing. Opened from `localhost`, it runs in a device-only mode for development.
+## Current mode: device only, no sign-in
+
+`SUPA` is empty for now, so the page runs with no sign-in and no database. Everything is kept in the browser's own storage on that device, and nothing is sent anywhere. Each device has its own copy.
+
+**Backup** (under the intro) downloads the whole board as one JSON file and restores from one. That file is how the board moves between devices, and the only copy if the browser's data is cleared. Backup files hold private notes, so keep them out of this repository.
+
+Once `SUPA` is filled in, the sign-in screen and the shared database take over, and a backup file can be restored into it.
 
 ## Supabase setting to change by hand
 
