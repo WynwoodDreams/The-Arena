@@ -54,9 +54,10 @@ Edit `connections.js` to add public website names, repository links, and live UR
 
 ## Workflows
 
-`workflows.js` is the shared registry of n8n workflows, used by the Flow station and the `/api/flow/run` endpoint. Three are registered:
+`workflows.js` is the shared registry of n8n workflows, used by the Flow station and the `/api/flow/run` endpoint. Four are registered:
 
 - **Grant Radar** and **Agent Ideas** start from Flow. Each has a Webhook trigger in n8n (POST, Respond Immediately) at `/webhook/agent-arena-grant-radar` and `/webhook/agent-arena-agent-ideas` on the same n8n host as Scout, so no extra variable is needed. `N8N_AGENT_IDEAS_WEBHOOK_URL` and the matching `_AUTH_HEADER_NAME` / `_AUTH_HEADER_VALUE` variables override that, as the Grant Radar ones do.
+- **(Jev gate) AI Jobs Monitor** starts from Flow at `/webhook/agent-arena-jev-gate-ai-jobs-monitor` on the Scout host (n8n workflow `IzqCVxf9pis8m69R`). `N8N_JEV_GATE_AI_JOBS_MONITOR_WEBHOOK_URL` and its `_AUTH_HEADER_NAME` / `_AUTH_HEADER_VALUE` variables override that. Add a Webhook trigger with that path to the workflow and publish it before running from the Arena.
 - **AI Jobs Monitor** (Indeed v3 with Slack summaries) is what the Scout station runs through `N8N_SCOUT_WEBHOOK_URL`. Flow lists it and points to Scout.
 
 To add a workflow: give it a Webhook trigger in n8n, add an entry with its path to `workflows.js`, and it appears in Flow with its own Run button. Hosts and credentials never go in that file.

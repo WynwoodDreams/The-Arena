@@ -80,6 +80,11 @@ test("flow: starts Agent Ideas on the Scout host and rejects unknown workflows",
   assert.equal(b.statusCode, 400, "Scout-driven workflow is not startable from Flow");
   const c = fakeRes(); await handler(req({ body: { workflow: "../etc" } }), c);
   assert.equal(c.statusCode, 400);
+  delete process.env.N8N_JEV_GATE_AI_JOBS_MONITOR_WEBHOOK_URL;
+  const d = fakeRes(); await handler(req({ body: { workflow: "jev-gate-ai-jobs-monitor" } }), d);
+  assert.equal(d.statusCode, 202);
+  assert.equal(url, "https://n8n.test/webhook/agent-arena-jev-gate-ai-jobs-monitor");
+  assert.equal(sent.workflow, "jev-gate-ai-jobs-monitor");
 });
 
 test("monitor: checks every site once, then serves the cache", async () => {
