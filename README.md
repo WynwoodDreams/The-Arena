@@ -6,7 +6,7 @@ Six stations: Chief (Christian's decisions), Scout (research), Flow (automations
 
 - Scout calls the existing server-side `/api/scout/run` n8n integration. `Started` means n8n accepted the request; final workflow results are not synchronized yet.
 - Monitor checks BuildersBench, Opportunity Board, Arrest Intelligence, EM Riders, MDPD Dashboard, and Miami Environmental Intel automatically on opening and on refresh. These are homepage availability checks, not internal application, login, database, or GPS checks.
-- Flow starts Grant Radar through `/api/flow/run`. Its immediate response is shown as **Started**; final results are not synchronized. Pulse is labeled **Not connected**. Forge contains a linked project library; build progress is not connected. No simulated runs, costs, successes, or task counts are displayed.
+- Flow starts Grant Radar through `/api/flow/run`. Its immediate response is shown as **Started**; final results are not synchronized. Pulse is labeled **Not connected**. Forge reads public GitHub data for each linked repository through `/api/projects/status`: the last five commits, their line counts, and the Vercel status on the latest commit. The **Forge · Project Command** panel groups projects into Deployed, Pending, Failed, Unverified, and No repository lanes, lists one row per project, and sums lines changed across the counted commits. Line counts need one GitHub request per commit, so only two commits per repository are counted unless `GITHUB_TOKEN` is set on Vercel; then all five are. Counts cover those recent commits only, never whole repositories. No simulated runs, costs, successes, or task counts are displayed.
 
 ## Chief inbox and history
 

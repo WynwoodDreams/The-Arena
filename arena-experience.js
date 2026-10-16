@@ -56,7 +56,6 @@
     header.appendChild(controls);
   }
   addCarouselButtons("website-grid","websites");
-  addCarouselButtons("cmd-project-list","projects");
   addCarouselButtons("cmd-mission-list","missions");
 
   function update(){
