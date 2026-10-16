@@ -2,6 +2,20 @@
 -- Written only by the Arena's server endpoint (service role). No browser or signed-in
 -- account can read or change this table directly; the board's owner rules do not apply here.
 
+-- Shared helpers, created here too so this file runs on its own (0001 is only needed for the board).
+create schema if not exists private;
+create or replace function private.arena_touch()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+revoke all on function private.arena_touch() from public, anon, authenticated;
+
 create table if not exists public.arena_decisions (
   id uuid primary key,
   key text not null check (length(key) between 1 and 120),
