@@ -129,3 +129,30 @@ test("analytics: reports online now per site and a total from the 5-minute windo
   assert.equal(res.body.totalOnline, 3);
   assert.equal(res.body.onlineSites, 1);
 });
+
+test("projects: lists recent commits with line counts and keeps unknown counts null", async () => {
+  const projects = require("../api/projects/status");
+  global.fetch = async (url) => {
+    const json = /\/commits\?per_page=/.test(url)
+      ? [1, 2, 3].map(n => ({ sha: "abcdef" + n + "0000000", commit: { message: "Change " + n + "\n\nbody", committer: { date: "2026-10-0" + n + "T00:00:00Z" }, author: { name: "Dev" } }, author: { login: "dev", avatar_url: "https://avatars.githubusercontent.com/u/1" } }))
+      : /\/status$/.test(url) ? { statuses: [{ context: "Vercel", state: "success", target_url: "https://vercel.com/x" }] }
+      : /\/commits\//.test(url) ? { stats: { additions: 10, deletions: 4 } }
+      : {};
+    return { ok: true, status: 200, json: async () => json };
+  };
+  delete process.env.GITHUB_TOKEN;
+  const res = fakeRes();
+  await projects({ method: "GET" }, res);
+  assert.equal(res.statusCode, 200);
+  const cob = res.body.projects.find(p => p.id === "cob");
+  assert.equal(cob.recentCommits.length, 3);
+  assert.equal(cob.lastCommit.sha, "abcdef1");
+  assert.equal(cob.recentCommits[0].author, "dev");
+  assert.equal(cob.recentCommits[0].additions, 10);
+  assert.equal(cob.recentCommits[2].additions, null, "only two commits are detailed without a token");
+  assert.equal(cob.recentCommits[0].fullSha, undefined);
+  assert.deepEqual(cob.codeActivity, { commits: 3, counted: 2, additions: 20, deletions: 8 });
+  assert.equal(cob.deployment.status, "success");
+  const bb = res.body.projects.find(p => p.id === "buildersbench");
+  assert.equal(bb.codeActivity, null);
+});

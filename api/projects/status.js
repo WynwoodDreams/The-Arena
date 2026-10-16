@@ -12,6 +12,20 @@ const arena = {
 
 const projectSources = [arena, ...sites];
 const base = "https://api.github.com/repos/";
+const RECENT_COMMITS = 5;
+
+function summarizeCommit(commit) {
+  return {
+    sha: String(commit.sha).slice(0, 7),
+    fullSha: String(commit.sha),
+    message: String(commit.commit?.message || "").split("\n")[0].slice(0, 180),
+    at: commit.commit?.committer?.date || commit.commit?.author?.date || null,
+    author: commit.author?.login || commit.commit?.author?.name || null,
+    avatar: validExternalUrl(commit.author?.avatar_url),
+    additions: null,
+    deletions: null
+  };
+}
 
 async function githubGet(path) {
   const headers = {
@@ -43,6 +57,8 @@ async function inspect(source) {
     source: source.repository ? "github" : "unlinked",
     checkedAt: new Date().toISOString(),
     lastCommit: null,
+    recentCommits: [],
+    codeActivity: null,
     deployment: null,
     error: null
   };
@@ -54,13 +70,36 @@ async function inspect(source) {
   }
   const slug = encodeURIComponent(match[1]) + "/" + encodeURIComponent(match[2]);
   try {
-    const commits = await githubGet(slug + "/commits?per_page=1");
+    const commits = await githubGet(slug + "/commits?per_page=" + RECENT_COMMITS);
     const commit = Array.isArray(commits) ? commits[0] : null;
     if (!commit || !commit.sha) throw new Error("No public commit information.");
+    result.recentCommits = commits.filter(c => c && c.sha).map(summarizeCommit);
     result.lastCommit = {
-      sha: String(commit.sha).slice(0, 7),
-      message: String(commit.commit?.message || "").split("\n")[0].slice(0, 180),
-      at: commit.commit?.committer?.date || commit.commit?.author?.date || null
+      sha: result.recentCommits[0].sha,
+      message: result.recentCommits[0].message,
+      at: result.recentCommits[0].at
+    };
+    // Line counts need one request per commit, so only a few are fetched
+    // without a token to stay inside GitHub's anonymous rate limit.
+    const detailed = process.env.GITHUB_TOKEN ? RECENT_COMMITS : 2;
+    await Promise.all(result.recentCommits.slice(0, detailed).map(async entry => {
+      try {
+        const detail = await githubGet(slug + "/commits/" + encodeURIComponent(entry.fullSha));
+        if (detail.stats) {
+          entry.additions = Number(detail.stats.additions) || 0;
+          entry.deletions = Number(detail.stats.deletions) || 0;
+        }
+      } catch {
+        // Unknown line counts stay null; they are never shown as zero.
+      }
+    }));
+    result.recentCommits.forEach(entry => { delete entry.fullSha; });
+    const counted = result.recentCommits.filter(entry => entry.additions != null);
+    result.codeActivity = {
+      commits: result.recentCommits.length,
+      counted: counted.length,
+      additions: counted.reduce((sum, entry) => sum + entry.additions, 0),
+      deletions: counted.reduce((sum, entry) => sum + entry.deletions, 0)
     };
     try {
       const combined = await githubGet(slug + "/commits/" + encodeURIComponent(commit.sha) + "/status");
@@ -91,7 +130,7 @@ module.exports = async function handler(req, res) {
     const projects = await Promise.all(projectSources.map(inspect));
     return res.status(200).json({
       success: true,
-      source: "GitHub public repository commits and Vercel GitHub statuses",
+      source: "GitHub public repository commits, per-commit line counts, and Vercel GitHub statuses",
       checkedAt: new Date().toISOString(),
       projects
     });
