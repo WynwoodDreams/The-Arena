@@ -12,7 +12,15 @@ Six stations: Chief (Christian's decisions), Scout (research), Flow (automations
 
 Website errors and workflow follow-ups create review items. Repeated unresolved website issues are merged; a successful subsequent health check resolves the corresponding issue. Manual approval requests can be added using **Add decision**. Approve, Request changes, Reject, and Mark reviewed record local decisions only; they do not publish, deploy, or execute external jobs.
 
-Run history (latest 100), activity (latest 30), decisions (latest 200), and latest results are saved using browser localStorage. This is browser-specific and is not a shared backend, account login, or cross-device synchronization. Interrupted workflow requests are shown as Unknown and should be checked in n8n before retrying.
+Run history (latest 100), activity (latest 30), and latest results are saved using browser localStorage. Interrupted workflow requests are shown as Unknown and should be checked in n8n before retrying.
+
+Decisions (latest 200) are also pushed to a shared Supabase table through `/api/decisions/sync` so every device sees the same inbox and the skill-improvement loop can read them. **Request changes** and **Reject** ask for a one-line reason; that note is the signal the loop learns from. Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` on Vercel and run `supabase/migrations/0002_arena_decisions.sql`; until then the inbox says it is saved in this browser only. The service role key never reaches the browser, and the table has no browser-facing policies. A decision Chief already settled on one device is never reopened by a stale copy from another.
+
+## Skill loops
+
+Each station's behavior is written down in `.claude/skills/<station>/SKILL.md`: what a good result looks like, what reaches Chief, and what stays quiet. Monitor and Scout have one now. This is the inner loop: the file governs the work.
+
+`.claude/skills/improve-skills/SKILL.md` is the outer loop. On a schedule, or when asked, a Claude Code session runs `node scripts/export-decisions.js --days 7` against the shared decisions, finds the station Chief pushed back on most, and opens one small pull request that changes that station's skill file, quoting the notes that motivated it. It proposes; Chief merges. It never edits endpoints or registries, and it never merges or pushes to the default branch.
 
 ## Vercel configuration
 
@@ -24,7 +32,7 @@ Opening the dashboard only runs the read-only website check. Scout and Grant Rad
 
 All three endpoints (`lib/guard.js`) accept POST only from the Arena page itself: the request's `Origin` must match the site host, so other sites and plain command-line calls get 403. Monitor results are also reused for two minutes per server instance, so repeated page opens do not re-check every site.
 
-Scout and Grant Radar can start paid work, so they take one more step. Set `ARENA_ACCESS_KEY` on Vercel to any long random string. The first time a station is run, the page asks for that key once and keeps it in that browser. Without the variable, only the origin check applies. `vercel.json` also sets security headers (Content Security Policy, no framing, no sniffing).
+Scout, Grant Radar, and decision sync can start paid work or write shared data, so they take one more step. Set `ARENA_ACCESS_KEY` on Vercel to any long random string. The first time a station is run, the page asks for that key once and keeps it in that browser. Without the variable, only the origin check applies. `vercel.json` also sets security headers (Content Security Policy, no framing, no sniffing).
 
 ## Checks
 
