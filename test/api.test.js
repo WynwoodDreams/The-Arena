@@ -156,3 +156,50 @@ test("projects: lists recent commits with line counts and keeps unknown counts n
   const bb = res.body.projects.find(p => p.id === "buildersbench");
   assert.equal(bb.codeActivity, null);
 });
+
+test("decisions: reports unconfigured without touching the network", async () => {
+  const sync = require("../api/decisions/sync");
+  delete process.env.SUPABASE_URL; delete process.env.SUPABASE_SERVICE_ROLE_KEY; delete process.env.ARENA_ACCESS_KEY;
+  let hits = 0; global.fetch = async () => { hits++; throw new Error("must not be called"); };
+  const res = fakeRes();
+  await sync(req({ body: { decisions: [] } }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.configured, false);
+  assert.equal(hits, 0);
+});
+
+test("decisions: cleans input, keeps settled rows settled, and returns the shared list", async () => {
+  const sync = require("../api/decisions/sync");
+  process.env.SUPABASE_URL = "https://example.supabase.co"; process.env.SUPABASE_SERVICE_ROLE_KEY = "service"; delete process.env.ARENA_ACCESS_KEY;
+  const id1 = "11111111-1111-4111-8111-111111111111", id2 = "22222222-2222-4222-8222-222222222222";
+  const calls = [];
+  global.fetch = async (url, opts) => {
+    calls.push({ url: String(url), method: opts.method, body: opts.body ? JSON.parse(opts.body) : null, auth: opts.headers.Authorization });
+    if (opts.method === "GET" && /id=in/.test(url)) return { ok: true, status: 200, json: async () => [{ id: id2, status: "rejected" }] };
+    if (opts.method === "POST") return { ok: true, status: 204 };
+    return { ok: true, status: 200, json: async () => [{ id: id2, key: "health-cob", agent: "monitor", kind: "issue", title: "Opportunity Board · HTTP 503", detail: "", status: "rejected", note: "flaky host", created_at: "2026-10-10T00:00:00.000Z", decided_at: "2026-10-11T00:00:00.000Z", updated_at: "2026-10-11T00:00:00.000Z" }] };
+  };
+  const res = fakeRes();
+  await sync(req({ body: { decisions: [
+    { id: id1, key: "manual", agent: "forge", kind: "approval", title: "Merge skill PR", detail: "x", status: "pending", createdAt: "2026-10-12T00:00:00.000Z" },
+    { id: id2, key: "health-cob", agent: "monitor", kind: "issue", title: "Opportunity Board needs attention", status: "pending", createdAt: "2026-10-10T00:00:00.000Z" },
+    { id: "not-a-uuid", agent: "monitor", kind: "issue", title: "bad", status: "pending", createdAt: "2026-10-10T00:00:00.000Z" },
+    { id: id1, agent: "hacker", kind: "issue", title: "bad agent", status: "pending", createdAt: "2026-10-10T00:00:00.000Z" }
+  ] } }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.pushed, 2, "two valid rows after cleaning");
+  const upsert = calls.find(c => c.method === "POST");
+  assert.equal(upsert.body.length, 1, "the stale pending copy of a rejected decision is not written");
+  assert.equal(upsert.body[0].id, id1);
+  assert.equal(upsert.auth, "Bearer service");
+  assert.equal(res.body.decisions[0].note, "flaky host");
+  assert.equal(res.body.decisions[0].status, "rejected");
+});
+
+test("decisions: writes need the access key when one is configured", async () => {
+  const sync = require("../api/decisions/sync");
+  process.env.ARENA_ACCESS_KEY = "secret";
+  const res = fakeRes();
+  await sync(req({ body: { decisions: [] } }), res);
+  assert.equal(res.statusCode, 401);
+});
